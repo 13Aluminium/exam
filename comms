@@ -1,3 +1,68 @@
 We can communicate via this file
 - 042
 Odd set - Jash
+
+
+odd
+
+#include <iostream>
+#include <unordered_set>
+using namespace std;
+
+int main() {
+	// your code goes here
+	long t;
+	cin>>t;
+	while(t--)
+	{
+    int n, m;
+    cin >> n >> m;
+
+    unordered_set<int> hs;
+    for (int i = 0; i < n; i++) {
+        int d;
+        cin >> d;
+        hs.insert(d);
+    }
+
+    if (hs.size() != m) {
+        cout << "YES" << endl;
+    }
+    else {
+        cout << "NO" << endl;
+    }
+	}
+	return 0;
+}
+
+
+even 
+#include <iostream>
+using namespace std;
+
+int main() {
+	// your code goes here
+	int t;
+	cin>>t;
+	while(t--){
+	    int G,P;
+	    cin>>G>>P;
+	    int arr[10];
+	    for(int i=0;i<10;i++){
+	        cin>>arr[i];
+	    }
+	    int total=0;
+	    for(int i=G;i<10;i++){
+	        total+=arr[i];
+	    }
+	    int mindays=total/P+1;
+	    total+=arr[G-1];
+	    int maxdays=total/P;
+	    if(total%P!=0){
+	        maxdays++;
+	    }
+	    cout<<mindays<<" "<<maxdays<<endl;
+	    
+	}
+	return 0;
+}
