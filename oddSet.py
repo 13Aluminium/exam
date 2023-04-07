@@ -1,6 +1,8 @@
 # Odd Set
 
 # No code for python
+# Submit karvma dhyaan rakhjo, 3000 rating no code che. Emne khabr padi jase ke copy karlo che
+
 
 
 #include<bits/stdc++.h>
