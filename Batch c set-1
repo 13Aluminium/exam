@@ -1,0 +1,36 @@
+1st que:
+#License: https://bit.ly/3oLErEI
+
+def test(strs):
+     return strs.translate({ord(c):ord(c)+2 for c in "aeiouAEIOU"}).swapcase()
+
+strs = "Python" 
+print("Original string:",strs)
+print("Find string s that, when case is flipped gives target where vowels are replaced by chars two later:")
+print(test(strs))
+strs = "aeiou" 
+print("\nOriginal string:",strs)
+print("Find string s that, when case is flipped gives target where vowels are replaced by chars two later:")
+print(test(strs))
+strs = "Hello, world!" 
+print("\nOriginal string:",strs)
+print("Find string s that, when case is flipped gives target where vowels are replaced by chars two later:")
+print(test(strs))
+strs = "AEIOU" 
+print("\nOriginal string:",strs)
+print("Find string s that, when case is flipped gives target where vowels are replaced by chars two later:")
+print(test(strs)) 
+
+2nd que:
+size = int(input("Input the size of the matrix: "))
+matrix = [[0] * size for row in range(0, size)]
+for x in range(0, size):
+
+    line = list(map(int, input().split()))
+
+    for y in range(0, size):
+        matrix[x][y] = line[y]
+
+matrix_sum_diagonal = sum(matrix[size - i - 1][size - i - 1] for i in range(size))
+print("Sum of matrix primary diagonal:")
+print(matrix_sum_diagonal)
