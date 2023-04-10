@@ -1,0 +1,30 @@
+
+def test(counts):
+     return " ".join(c for c, i in counts.items() for _ in range(i))
+strs = {"f": 1, "o": 2}
+print("Original string:",strs) 
+print("String consisting of space-separated characters with given counts:")
+print(test(strs))
+strs = {"a": 1, "b": 1, "c":1}
+print("\nOriginal string:",strs) 
+print("String consisting of space-separated characters with given counts:")
+print(test(strs)) 
+
+#2###
+
+test_list1 = [1, 4, 5]
+test_list2 = [3, 8, 9]
+ 
+# printing original lists
+print ("Original list 1 : " + str(test_list1))
+print ("Original list 2 : " + str(test_list2))
+ 
+ 
+# to interleave lists
+res = []
+for i in range(0,len(test_list1)):
+    res.append(test_list1[i])
+    res.append(test_list2[i])
+ 
+# printing result
+print ("The interleaved list is : " + str(res))
