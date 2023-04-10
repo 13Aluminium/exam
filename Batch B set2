@@ -1,0 +1,28 @@
+Jash
+1st question
+test_list = ['gfg', 'is', 'best', 'for', 'geeks']
+ 
+# printing original list
+print("The original list : " + str(test_list))
+ 
+# Longest String in list
+# using max() + key
+res = max(test_list, key = len)
+ 
+# printing result
+print("Maximum length string is : " + res)
+
+2nd question
+
+def prepend(list, str):
+ 
+    # Using format()
+    str += '{0}'
+    list = [str.format(i) for i in list]
+    return(list)
+ 
+ 
+# Driver function
+list = [1, 2, 3, 4]
+str = 'Geek'
+print(prepend(list, str))
