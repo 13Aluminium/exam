@@ -1,7 +1,13 @@
-ORG 100H
-MOV CX,10H
-MOV AL,1H
-L1:
-MUL CX 
-LOOP L1
-RET
+
+; You may customize this and other start-up templates; 
+; The location of this template is c:\emu8086\inc\0_com_template.txt
+
+org 100h 
+
+mov cx,05h;
+mov al,1h;  
+l1:  
+mul cx;
+loop l1
+ret
+
