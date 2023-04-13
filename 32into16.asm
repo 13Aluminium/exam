@@ -1,7 +1,0 @@
-MOV SI,1400H
-MOV AX,[SI]
-MOV DX ,[SI+2]
-MOV BX,[SI+4]              32BIT DIV 16 BIT
-DIV BX
-MOV [SI+6],DX
-MOV [SI+6],AX
