@@ -1,0 +1,125 @@
+Instruction: 
+
+
+Set - A:
+
+1) 
+
+### Explanation of LEX Ambiguity Resolution:
+
+In LEX, *ambiguity* is resolved based on two rules:
+
+1. *Longest Match Rule*: LEX always matches the longest possible string for a token.
+2. *Rule Priority*: If two or more patterns match the same longest string, the rule appearing first in the LEX file takes precedence.
+
+When the input int3 is encountered:
+- LEX first tries to match the entire string int3 using the longest match rule.
+- Since no specific pattern matches int3 as a whole, LEX checks subpatterns:
+  - The keyword pattern int matches the first three characters.
+  - The identifier pattern [a-zA-Z][a-zA-Z0-9]* matches the entire string int3.
+- Based on the longest match rule, the identifier pattern wins because it matches the entire input.
+
+### Why it Works That Way:
+This behavior ensures that tokens are extracted consistently and unambiguously, with a preference for longer matches. However, in this case, it may incorrectly classify int3 as an identifier instead of detecting int as a keyword and 3 as part of a separate token.
+
+### Suggested Modifications:
+To correctly classify int3 as int (keyword) followed by an identifier 3, we need to:
+1. Separate keywords strictly from identifiers.
+2. Add boundaries around keywords (e.g., whitespace or non-alphanumeric characters).
+
+#### Updated LEX Program:
+lex
+%{
+#include <stdio.h>
+%}
+
+%%
+int|float|double  { printf("Keyword: %s\n", yytext); }
+[a-zA-Z][a-zA-Z0-9]* { printf("Identifier: %s\n", yytext); }
+[0-9]+(\.[0-9]+)? { printf("Number: %s\n", yytext); }
+[ \t\n]+ ;  // Ignore whitespace
+. { printf("Unknown: %s\n", yytext); }  // Catch-all for other characters
+%%
+
+int main() {
+    yylex();
+    return 0;
+}
+int yywrap() {
+    return 1;
+}
+
+
+### Why This Fix Works:
+1. Keywords (int, float, double) are explicitly matched first, ensuring they take precedence over identifiers.
+2. Identifiers ([a-zA-Z][a-zA-Z0-9]*) only match alphanumeric sequences not classified as keywords.
+3. Input like int3 is handled correctly:
+   - int is matched as a keyword because it matches before the identifier rule.
+   - 3 is treated as part of a separate token.
+
+### Sample Input and Output:
+
+#### Input:
+
+int3 float num123 456.78 double abc
+
+
+#### Output:
+
+Keyword: int
+Identifier: 3
+Keyword: float
+Identifier: num123
+Number: 456.78
+Keyword: double
+Identifier: abc
+ 
+
+This approach ensures accurate classification of tokens while resolving ambiguity effectively.
+
+
+2)
+
+flex SetA_1.l
+gcc lex.yy.c -o hello  
+./hello 
+int3 float num123 456.78 double abc
+
+
+Set - B:
+
+1)
+Enter the number of productions: 3
+Enter the productions (e.g., A=BC|a):
+A=BC|a
+B=b
+C=c
+
+First Sets:       
+First(A) = { bc| }
+First(B) = { b }  
+First(C) = { c }  
+
+Follow Sets:      
+Follow(A) = { $ } 
+Follow(B) = { c }
+Follow(C) = { | }
+
+
+2)
+Sample Input and Output:
+Input:
+css
+Copy code
+x = a + b * 5
+Output:
+yaml
+Copy code
+Enter an arithmetic expression: 
+Identifier: x
+Operator: =
+Identifier: a
+Operator: +
+Identifier: b
+Operator: *
+Number: 5
