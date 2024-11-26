@@ -1,8 +1,0 @@
-aa run na karavta
-aa khali SetB_1.l mate che
-ene klemny run karavanu ee che
-
-flex SetB_1.l
-gcc lex.yy.c -o SetB_1
-./SetB_1 input.c
- ama output generate thay jase ee batavi dejo
