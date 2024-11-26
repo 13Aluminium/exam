@@ -1,0 +1,188 @@
+﻿Set-8 (EVEN)
+
+Below are the steps to create the nodes and relationships in Neo4j and the Cypher queries to answer the given questions.
+Step 1: Create Nodes
+Create Manager Nodes
+CREATE (:Manager {name: 'Rohan', age: 40, city: 'Mumbai'}),
+       (:Manager {name: 'Aditi', age: 35, city: 'Delhi'}),
+       (:Manager {name: 'Kunal', age: 28, city: 'Bengaluru'}),
+       (:Manager {name: 'Meera', age: 45, city: 'Kolkata'}),
+       (:Manager {name: 'Priya', age: 32, city: 'Chennai'});
+Create Product Nodes
+CREATE (:Product {name: 'Laptop', brand: 'Dell', price: 80000}),
+       (:Product {name: 'Smartphone', brand: 'Samsung', price: 50000}),
+       (:Product {name: 'Sneakers', brand: 'Nike', price: 5000}),
+       (:Product {name: 'Refrigerator', brand: 'LG', price: 25000});
+Create Category Nodes
+CREATE (:Category {name: 'Electronics'}),
+       (:Category {name: 'Fashion'});
+Create Warehouse Nodes
+CREATE (:Warehouse {city: 'Pune'}),
+       (:Warehouse {city: 'Hyderabad'}),
+       (:Warehouse {city: 'Jaipur'});
+
+Step 2: Create Relationships
+MANAGES Relationship
+MATCH (m:Manager {name: 'Rohan'}), (p:Product {name: 'Laptop'})
+CREATE (m)-[:MANAGES]->(p);
+
+MATCH (m:Manager {name: 'Aditi'}), (p:Product {name: 'Smartphone'})
+CREATE (m)-[:MANAGES]->(p);
+
+MATCH (m:Manager {name: 'Kunal'}), (p:Product {name: 'Sneakers'})
+CREATE (m)-[:MANAGES]->(p);
+
+MATCH (m:Manager {name: 'Meera'}), (p:Product {name: 'Refrigerator'})
+CREATE (m)-[:MANAGES]->(p);
+BELONGS_TO Relationship
+MATCH (p:Product {name: 'Laptop'}), (c:Category {name: 'Electronics'})
+CREATE (p)-[:BELONGS_TO]->(c);
+
+MATCH (p:Product {name: 'Smartphone'}), (c:Category {name: 'Electronics'})
+CREATE (p)-[:BELONGS_TO]->(c);
+
+MATCH (p:Product {name: 'Sneakers'}), (c:Category {name: 'Fashion'})
+CREATE (p)-[:BELONGS_TO]->(c);
+
+MATCH (p:Product {name: 'Refrigerator'}), (c:Category {name: 'Electronics'})
+CREATE (p)-[:BELONGS_TO]->(c);
+STORED_IN Relationship
+MATCH (p:Product {name: 'Laptop'}), (w:Warehouse {city: 'Pune'})
+CREATE (p)-[:STORED_IN]->(w);
+
+MATCH (p:Product {name: 'Smartphone'}), (w:Warehouse {city: 'Hyderabad'})
+CREATE (p)-[:STORED_IN]->(w);
+
+MATCH (p:Product {name: 'Sneakers'}), (w:Warehouse {city: 'Jaipur'})
+CREATE (p)-[:STORED_IN]->(w);
+
+MATCH (p:Product {name: 'Refrigerator'}), (w:Warehouse {city: 'Hyderabad'})
+CREATE (p)-[:STORED_IN]->(w);
+
+Step 3: Queries to Answer Questions
+1. Which products are managed by Rohan, and where are they stored?
+MATCH (m:Manager {name: 'Rohan'})-[:MANAGES]->(p:Product)-[:STORED_IN]->(w:Warehouse)
+RETURN p.name AS Product, w.city AS Warehouse;
+2. List all products in the "Electronics" category and the warehouses where they are stored.
+MATCH (p:Product)-[:BELONGS_TO]->(c:Category {name: 'Electronics'}),
+      (p)-[:STORED_IN]->(w:Warehouse)
+RETURN p.name AS Product, w.city AS Warehouse;
+3. Which manager is responsible for products stored in Hyderabad?
+MATCH (m:Manager)-[:MANAGES]->(p:Product)-[:STORED_IN]->(w:Warehouse {city: 'Hyderabad'})
+RETURN m.name AS Manager, p.name AS Product;
+
+Expected Output
+Query 1:
+Product
+Warehouse
+Laptop
+Pune
+Query 2:
+Product
+Warehouse
+Laptop
+Pune
+Smartphone
+Hyderabad
+Refrigerator
+Hyderabad
+Query 3:
+Manager
+Product
+Aditi
+Smartphone
+Meera
+Refrigerator
+
+
+2) 
+
+To create the Power BI dashboard as per the requirements, follow these step-by-step instructions:
+
+Step 1: Load and Prepare the Dataset
+    1. Download the Dataset:
+        ◦ Click the provided link, download the dataset, and save it on your local machine. 
+    2. Import Data into Power BI:
+        ◦ Open Power BI Desktop. 
+        ◦ Click on Home > Get Data > Excel (or CSV). 
+        ◦ Select the downloaded dataset file and load it. 
+    3. Data Model Review:
+        ◦ After importing, review the dataset in the Data View to ensure all columns are correctly recognized (e.g., SaleDate as Date, SaleAmount as Numeric). 
+    4. Data Cleaning:
+        ◦ Navigate to Transform Data in the toolbar to clean the dataset: 
+            ▪ Ensure there are no missing values in critical columns like SaleAmount, Region, SaleDate, etc. 
+            ▪ Rename columns if needed for clarity. 
+        ◦ Click Close & Apply to save changes. 
+
+Step 2: Create Visualizations
+1. Total Sales Across All Stores
+    • Navigate to the Report View. 
+    • Drag and drop a Card Visualization onto the canvas. 
+    • Add the SaleAmount column to the Fields pane for the Card. 
+    • In the Card, Power BI will automatically calculate the sum of SaleAmount. 
+    • Label the visualization as Total Sales Across All Stores. 
+
+2. Sales by Region and Product Category
+    • Drag and drop a Stacked Area Chart onto the canvas. 
+    • Set up the chart as follows: 
+        ◦ Axis: Add the SaleDate column. 
+        ◦ Legend: Add the ProductCategory column. 
+        ◦ Values: Add the SaleAmount column. 
+    • Use the Region column to create filters: 
+        ◦ Drag the Region column to the Filters pane. 
+        ◦ Ensure the chart updates dynamically based on region selection. 
+    • Label the chart as Sales by Region and Product Category. 
+
+3. Customer Demographics by Loyalty Level
+    • Drag and drop a Clustered Bar Chart onto the canvas. 
+    • Set up the chart as follows: 
+        ◦ Axis: Add the CustomerLoyaltyLevel column. 
+        ◦ Legend: Add the CustomerGender column. 
+        ◦ Values: Add the SaleAmount column. 
+    • Format the chart to show segmentation by gender and loyalty level. 
+    • Label the chart as Customer Demographics by Loyalty Level. 
+
+4. Store Performance Comparison
+    • Drag and drop a Bubble Chart onto the canvas. 
+    • Set up the chart as follows: 
+        ◦ X-Axis: Add the StoreName column. 
+        ◦ Y-Axis: Add the SaleAmount column. 
+        ◦ Size: Add the SaleAmount column again to control bubble size. 
+        ◦ Color Legend: Add the Region column. 
+    • Label the chart as Store Performance Comparison. 
+
+5. Customer Age vs. Quantity Sold
+    • Drag and drop a Scatter Plot onto the canvas. 
+    • Set up the chart as follows: 
+        ◦ X-Axis: Add the CustomerAge column. 
+        ◦ Y-Axis: Add the QuantitySold column. 
+        ◦ Legend: Add the ProductCategory column to color-code by category. 
+    • Label the chart as Customer Age vs. Quantity Sold. 
+
+Step 3: Refine the Dashboard
+    1. Arrange Visuals:
+        ◦ Arrange the visualizations neatly on the canvas to create an intuitive layout. 
+        ◦ Add titles to each visualization for clarity. 
+    2. Add Filters and Slicers:
+        ◦ Add slicers to enable users to filter by Region, StoreName, ProductCategory, or SaleDate for more interactive analysis. 
+    3. Customize Appearance:
+        ◦ Use Themes from the View tab to enhance the visual appeal of the dashboard. 
+        ◦ Ensure consistent formatting of fonts, colors, and chart labels. 
+
+Step 4: Publish and Share
+    1. Save Your Dashboard:
+        ◦ Save the Power BI file (e.g., Retail_Analysis.pbix). 
+    2. Publish to Power BI Service:
+        ◦ Click on Publish in the Home tab to upload the report to the Power BI service. 
+    3. Share the Report:
+        ◦ In the Power BI Service, share the dashboard link with stakeholders or embed it into a webpage for accessibility. 
+
+Summary Dashboard
+Your dashboard will include:
+    • Card Visualization: Total sales across all stores. 
+    • Stacked Area Chart: Sales by region and product category over time. 
+    • Clustered Bar Chart: Customer demographics by loyalty level and gender. 
+    • Bubble Chart: Store performance comparison. 
+    • Scatter Plot: Customer age vs. quantity sold. 
+This setup will provide actionable insights into sales, customer behavior, and store performance to support better decision-making.
+
