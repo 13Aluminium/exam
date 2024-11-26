@@ -1,0 +1,148 @@
+odd set 1
+node ctreation query
+
+CREATE (aarav:User {name: "Aarav", age: 26, city: "Mumbai"})
+CREATE (ananya:User {name: "Ananya", age: 34, city: "Delhi"})
+CREATE (vihaan:User {name: "Vihaan", age: 29, city: "Bengaluru"})
+CREATE (kavya:User {name: "Kavya", age: 40, city: "Hyderabad"})
+CREATE (riya:User {name: "Riya", age: 23, city: "Kolkata"});
+
+CREATE (laptop:Product {title: "Laptop", brand: "Dell", price: 100000})
+CREATE (smartphone:Product {title: "Smartphone", brand: "Samsung", price: 60000})
+CREATE (sneakers:Product {title: "Sneakers", brand: "Nike", price: 7000})
+CREATE (washingMachine:Product {title: "Washing Machine", brand: "LG", price: 25000});
+
+CREATE (electronics:Category {name: "Electronics"})
+CREATE (fashion:Category {name: "Fashion"});
+
+CREATE (aarav)-[:PURCHASED {rating: 5}]->(laptop)
+CREATE (ananya)-[:PURCHASED {rating: 4}]->(smartphone)
+CREATE (vihaan)-[:PURCHASED {rating: 5}]->(sneakers)
+CREATE (kavya)-[:PURCHASED {rating: 4}]->(washingMachine)
+CREATE (riya)-[:PURCHASED {rating: 4}]->(laptop);
+
+CREATE (laptop)-[:BELONGS_TO]->(electronics)
+CREATE (smartphone)-[:BELONGS_TO]->(electronics)
+CREATE (sneakers)-[:BELONGS_TO]->(fashion)
+CREATE (washingMachine)-[:BELONGS_TO]->(fashion);
+
+CREATE (aarav)-[:FOLLOWS]->(ananya)
+CREATE (vihaan)-[:FOLLOWS]->(riya)
+CREATE (kavya)-[:FOLLOWS]->(aarav);
+
+Cypher Queries
+
+MATCH (aarav:User {name: "Aarav"})-[:PURCHASED]->(product:Product)
+RETURN product.title AS Product, product.brand AS Brand, product.price AS Price;
+
+MATCH (user:User)-[:FOLLOWS]->(vihaan:User {name: "Vihaan"})
+RETURN user.name AS Followers;
+
+MATCH (product:Product)-[:BELONGS_TO]->(:Category {name: "Electronics"})
+MATCH (user:User)-[purchased:PURCHASED]->(product)
+RETURN product.title AS Product, 
+       product.brand AS Brand, 
+       user.name AS User, 
+       purchased.rating AS Rating;
+
+
+
+
+
+
+
+
+odd set 2 power bi
+
+
+#### **Step 3: Create Visualizations**
+
+1. **Admissions by Region (Map Visualization)**
+
+    - **Graph Type**: Map
+    - **Steps**:
+        1. Select the "Map" visualization.
+        2. Drag `Region` to the Location field.
+        3. Drag `AdmissionID` to the Values field and set it to Count.
+
+2. **Bed Utilization by Facility and Bed Type (Matrix Visualization)**
+
+    - **Graph Type**: Matrix
+    - **Steps**:
+        1. Select the "Matrix" visualization.
+        2. Drag `FacilityName` to Rows.
+        3. Drag `BedType` to Columns.
+        4. Drag `BedDaysUtilized` to Values and set it to Average.
+
+3. **Patient Age Groups (Tree Map Visualization)**
+
+    - **Graph Type**: Tree Map
+    - **Steps**:
+        1. Select the "Tree Map" visualization.
+        2. Drag `AgeGroup` to Group.
+        3. Drag `PatientID` to Values and set it to Count.
+
+4. **Doctor Workload Analysis (Clustered Bar Chart)**
+
+    - **Graph Type**: Clustered Bar Chart
+    - **Steps**:
+        1. Select the "Clustered Bar Chart" visualization.
+        2. Drag `DoctorName` to the Axis.
+        3. Drag `AdmissionID` to Values and set it to Count.
+        4. Drag `Specialization` to the Legend.
+
+5. **Patient Gender and Admission Cost Comparison (100% Stacked Bar Chart and Scatter Chart)**
+
+    - **Graph Type**: 100% Stacked Bar Chart and Scatter Chart
+    - **Steps for 100% Stacked Bar Chart**:
+        1. Select the "100% Stacked Bar Chart" visualization.
+        2. Drag `FacilityName` to the Axis.
+        3. Drag `PatientGender` to Legend.
+        4. Drag `PatientID` to Values and set it to Count.
+
+    - **Steps for Scatter Chart**:
+        1. Select the "Scatter Chart" visualization.
+        2. Drag `PatientGender` to the Details field.
+        3. Drag `TreatmentCost` to the X-axis.
+        4. Drag `PatientID` to the Y-axis and set it to Count.
+
+#### **Step 4: Format Visualizations**
+
+1. **Map Visualization**:
+    - Adjust size and color for better readability.
+    - Add data labels and tooltips.
+
+2. **Matrix Visualization**:
+    - Format columns for better clarity.
+    - Adjust row and column headers.
+
+3. **Tree Map Visualization**:
+    - Adjust color settings.
+    - Add data labels.
+
+4. **Clustered Bar Chart**:
+    - Adjust axis titles and labels.
+    - Customize bar colors by specialization.
+
+5. **100% Stacked Bar Chart and Scatter Chart**:
+    - Adjust color settings.
+    - Format axis labels and titles.
+
+#### **Step 5: Create Dashboard Layout**
+
+1. **Arrange Visualizations**:
+    - Place the Map visualization at the top to show geographical distribution.
+    - Place the Matrix visualization below the map for bed utilization.
+    - Position the Tree Map to the right of the map.
+    - Place the Clustered Bar Chart below the Matrix visualization.
+    - Arrange the 100% Stacked Bar Chart and Scatter Chart side by side below the Tree Map.
+
+2. **Add Titles and Descriptions**:
+    - Add clear titles for each visualization.
+    - Add descriptions if necessary for better understanding.
+
+3. **Customize Overall Dashboard**:
+    - Adjust background colors.
+    - Add logos or branding elements if required.
+
+By following these steps, you will create a comprehensive Power BI dashboard that provides actionable insights into the healthcare organization's performance, patient demographics, and resource utilization.
