@@ -1,0 +1,110 @@
+import org.cloudbus.cloudsim.*;
+import org.cloudbus.cloudsim.core.CloudSim;
+import org.cloudbus.cloudsim.provisioners.*;
+import java.util.*;
+public class exam1 {
+public static void main(String[] args) {
+try {
+// Initialize CloudSim
+int numUsers = 1;
+Calendar calendar = Calendar.getInstance();
+boolean traceFlag = false;
+CloudSim.init(numUsers, calendar, traceFlag);
+// Create data centers
+Datacenter datacenter1 = createDataCenter("Datacenter_1", 1000, 2);
+Datacenter datacenter2 = createDataCenter("Datacenter_2", 500, 2);
+// Create broker
+DatacenterBroker broker = createBroker();
+int brokerId = broker.getId();
+// Create VMs
+List<Vm> vmList = new ArrayList<>();
+vmList.add(createVm(brokerId, 0, 500));
+vmList.add(createVm(brokerId, 1, 500));
+broker.submitVmList(vmList);
+// Create Cloudlets
+List<Cloudlet> cloudletList = new ArrayList<>();
+cloudletList.add(createCloudlet(brokerId, 0, 400));
+cloudletList.add(createCloudlet(brokerId, 1, 300));
+broker.submitCloudletList(cloudletList);
+// Start simulation
+CloudSim.startSimulation();
+// Collect results
+List<Cloudlet> newList = broker.getCloudletReceivedList();
+CloudSim.stopSimulation();
+printResults(newList);
+} catch (Exception e) {
+e.printStackTrace();
+}
+}
+private static Datacenter createDataCenter(String name, int mips, int hostCount) {
+List<Host> hostList = new ArrayList<>();
+for (int i = 0; i < hostCount; i++) {
+List<Pe> peList = new ArrayList<>();
+peList.add(new Pe(0, new PeProvisionerSimple(mips)));
+int ram = 2048; // 2 GB
+long storage = 100000; // 100 GB
+int bw = 10000; // 10 GB/s
+hostList.add(new Host(
+i,
+new RamProvisionerSimple(ram),
+new BwProvisionerSimple(bw),
+storage,
+peList,
+new VmSchedulerTimeShared(peList)
+));
+}
+DatacenterCharacteristics characteristics = new DatacenterCharacteristics(
+"x86", "Linux", "Xen", hostList,
+10.0, 3.0, 0.05, 0.1, 0.01
+);
+Datacenter datacenter = null;
+try {
+datacenter = new Datacenter(name, characteristics, new VmAllocationPolicySimple(hostList), new
+LinkedList<>(), 0);
+} catch (Exception e) {
+e.printStackTrace();
+}
+return datacenter;
+}
+private static DatacenterBroker createBroker() {
+DatacenterBroker broker = null;
+try {
+broker = new DatacenterBroker("Broker");
+} catch (Exception e) {
+e.printStackTrace();
+}
+return broker;
+}
+private static Vm createVm(int brokerId, int id, int mips) {
+int ram = 1024; // 1 GB
+long bw = 1000; // 1 GB/s
+long size = 10000; // 10 GB
+String vmm = "Xen";
+return new Vm(id, brokerId, mips, 1, ram, bw, size, vmm, new CloudletSchedulerTimeShared());
+}
+private static Cloudlet createCloudlet(int brokerId, int id, int length) {
+long fileSize = 300;
+long outputSize = 300;
+int pesNumber = 1;
+UtilizationModel utilizationModel = new UtilizationModelFull();
+return new Cloudlet(id, length, pesNumber, fileSize, outputSize, utilizationModel, utilizationModel,
+utilizationModel);
+}
+private static void printResults(List<Cloudlet> list) {
+String indent = " ";
+System.out.println("========== OUTPUT ==========");
+System.out.println("Cloudlet ID" + indent + "STATUS" + indent +
+"Data center ID" + indent + "VM ID" + indent + "Time" + indent +
+"Start Time" + indent + "Finish Time");
+for (Cloudlet cloudlet : list) {
+System.out.print(indent + cloudlet.getCloudletId() + indent + indent);
+if (cloudlet.getStatus() == Cloudlet.SUCCESS) {
+System.out.println("SUCCESS" + indent + indent +
+cloudlet.getResourceId() + indent + indent + indent +
+cloudlet.getVmId() + indent + indent + cloudlet.getActualCPUTime() +
+indent + indent + cloudlet.getExecStartTime() + indent + indent +
+cloudlet.getFinishTime());
+}
+}
+}
+}
