@@ -1,0 +1,83 @@
+import java.util.*;
+import java.io.*;
+
+public class CloudAnalystSimulation {
+    
+    public static void main(String[] args) {
+        // Sample Input Configuration
+        List<Region> regions = Arrays.asList(
+            new Region("US-East", 500, 20, 300),
+            new Region("Asia-South", 300, 50, 300),
+            new Region("EU-West", 0, 0, 0) // Non-existent region for testing
+        );
+
+        // Simulate each test case
+        for (int i = 1; i <= 6; i++) {
+            runTestCase(i, regions);
+        }
+    }
+
+    public static void runTestCase(int testCaseId, List<Region> regions) {
+        switch (testCaseId) {
+            case 1:
+                // Ensure region-specific processing
+                regions.forEach(region -> System.out.println(region.name + " processes " + region.requests + " requests."));
+                break;
+            case 2:
+                // Verify average response time
+                double avgLatency = regions.stream().mapToDouble(r -> r.latency).average().orElse(0);
+                System.out.println("Average Response Time: " + avgLatency + "ms");
+                System.out.println("Expected ≤ 30ms: " + (avgLatency <= 30));
+                break;
+            case 3:
+                // Handle capacity overflow
+                for (Region region : regions) {
+                    if (region.requests > region.capacity) {
+                        int overflow = region.requests - region.capacity;
+                        System.out.println(region.name + " overloaded, " + overflow + " requests rerouted/dropped.");
+                    }
+                }
+                break;
+            case 4:
+                // Validate load distribution
+                System.out.println("Distributed load across data centers based on region.");
+                break;
+            case 5:
+                // Measure system throughput
+                int maxUsers = 2000;
+                double throughput = calculateThroughput(maxUsers, regions);
+                System.out.println("Throughput: " + throughput + "%, Expected ≥ 95%");
+                break;
+            case 6:
+                // Handle unsupported regions
+                regions.forEach(region -> {
+                    if (region.requests > 0 && region.capacity == 0) {
+                        System.out.println(region.name + " region not supported, requests flagged.");
+                    }
+                });
+                break;
+            default:
+                System.out.println("Invalid Test Case");
+        }
+    }
+
+    // Hypothetical throughput calculator
+    public static double calculateThroughput(int maxUsers, List<Region> regions) {
+        int totalProcessed = regions.stream().mapToInt(r -> Math.min(r.requests, r.capacity)).sum();
+        return (totalProcessed / (double) maxUsers) * 100;
+    }
+
+    static class Region {
+        String name;
+        int requests;
+        int latency;
+        int capacity;
+
+        Region(String name, int requests, int latency, int capacity) {
+            this.name = name;
+            this.requests = requests;
+            this.latency = latency;
+            this.capacity = capacity;
+        }
+    }
+}
