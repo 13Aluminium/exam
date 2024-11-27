@@ -1,0 +1,510 @@
+// this is macbook and krishnan is writing the content
+package org.cloudbus.cloudsim.examples;
+
+
+/*
+
+ * Title:        CloudSim E-commerce Simulation
+
+ * Description:  CloudSim simulation for an e-commerce system with multiple datacenters
+
+ */
+
+
+import java.text.DecimalFormat;
+
+import java.util.ArrayList;
+
+import java.util.Calendar;
+
+import java.util.LinkedList;
+
+import java.util.List;
+
+
+import org.cloudbus.cloudsim.Cloudlet;
+
+import org.cloudbus.cloudsim.CloudletSchedulerTimeShared;
+
+import org.cloudbus.cloudsim.Datacenter;
+
+import org.cloudbus.cloudsim.DatacenterBroker;
+
+import org.cloudbus.cloudsim.DatacenterCharacteristics;
+
+import org.cloudbus.cloudsim.Host;
+
+import org.cloudbus.cloudsim.Log;
+
+import org.cloudbus.cloudsim.Pe;
+
+import org.cloudbus.cloudsim.Storage;
+
+import org.cloudbus.cloudsim.UtilizationModel;
+
+import org.cloudbus.cloudsim.UtilizationModelFull;
+
+import org.cloudbus.cloudsim.Vm;
+
+import org.cloudbus.cloudsim.VmAllocationPolicySimple;
+
+import org.cloudbus.cloudsim.VmSchedulerTimeShared;
+
+import org.cloudbus.cloudsim.core.CloudSim;
+
+import org.cloudbus.cloudsim.provisioners.BwProvisionerSimple;
+
+import org.cloudbus.cloudsim.provisioners.PeProvisionerSimple;
+
+import org.cloudbus.cloudsim.provisioners.RamProvisionerSimple;
+
+
+public class CloudSimExample1 {
+
+    // Static variables for simulation configuration
+
+    private static final int NUM_DATACENTERS = 10;
+
+    private static final int HOSTS_PER_DATACENTER = 5;
+
+    private static final int NUM_VMS = 20;
+
+    private static final int INITIAL_CLOUDLETS = 40;
+
+
+    // Lists to store simulation entities
+
+    private static List<Datacenter> datacenters;
+
+    private static List<Vm> vmList;
+
+    private static List<Cloudlet> cloudletList;
+
+
+    /**
+
+     * Main method to run the simulation
+
+     */
+
+    public static void main(String[] args) {
+
+        try {
+
+            // Step 1: Initialize CloudSim
+
+            int num_user = 1;
+
+            Calendar calendar = Calendar.getInstance();
+
+            boolean trace_flag = false;
+
+            CloudSim.init(num_user, calendar, trace_flag);
+
+
+            // Step 2: Create Datacenters
+
+            datacenters = new ArrayList<>();
+
+            for (int i = 0; i < NUM_DATACENTERS; i++) {
+
+                Datacenter dc = createDatacenter("Datacenter_" + i);
+
+                datacenters.add(dc);
+
+            }
+
+
+            // Step 3: Create Broker
+
+            DatacenterBroker broker = createBroker("EcommerceBroker");
+
+            int brokerId = broker.getId();
+
+
+            // Step 4: Create VMs
+
+            vmList = createVMs(brokerId);
+
+            broker.submitVmList(vmList);
+
+
+            // Step 5: Create Cloudlets
+
+            cloudletList = createCloudlets(brokerId);
+
+            broker.submitCloudletList(cloudletList);
+
+
+            // Step 6: Start Simulation
+
+            CloudSim.startSimulation();
+
+
+            // Step 7: Get Results
+
+            List<Cloudlet> newList = broker.getCloudletReceivedList();
+
+
+            CloudSim.stopSimulation();
+
+
+            // Step 8: Print Results
+
+            printResults(newList);
+
+
+            Log.printLine("E-commerce Simulation completed successfully!");
+
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+
+            Log.printLine("An error occurred during simulation!");
+
+        }
+
+    }
+
+
+    /**
+
+     * Creates a datacenter with the specified configuration
+
+     */
+
+    private static Datacenter createDatacenter(String name) {
+
+        List<Host> hostList = new ArrayList<>();
+
+
+        for (int hostId = 0; hostId < HOSTS_PER_DATACENTER; hostId++) {
+
+            // Create PE List (CPU cores)
+
+            List<Pe> peList = new ArrayList<>();
+
+            int mips = 2000;
+
+            for (int j = 0; j < 4; j++) {
+
+                peList.add(new Pe(j, new PeProvisionerSimple(mips)));
+
+            }
+
+
+            // Create Host
+
+            int ram = 16384; // 16GB
+
+            long storage = 1000000; // 1TB
+
+            int bw = 20000;
+
+
+            Host host = new Host(
+
+                hostId,
+
+                new RamProvisionerSimple(ram),
+
+                new BwProvisionerSimple(bw),
+
+                storage,
+
+                peList,
+
+                new VmSchedulerTimeShared(peList)
+
+            );
+
+            hostList.add(host);
+
+        }
+
+
+        // Create Datacenter Characteristics
+
+        String arch = "x86";
+
+        String os = "Linux";
+
+        String vmm = "Xen";
+
+        double time_zone = 0.0;
+
+        double cost = 3.0;
+
+        double costPerMem = 0.05;
+
+        double costPerStorage = 0.001;
+
+        double costPerBw = 0.0;
+
+
+        DatacenterCharacteristics characteristics = new DatacenterCharacteristics(
+
+            arch, os, vmm, hostList, time_zone, cost, costPerMem, 
+
+            costPerStorage, costPerBw
+
+        );
+
+
+        Datacenter datacenter = null;
+
+        try {
+
+            datacenter = new Datacenter(
+
+                name,
+
+                characteristics,
+
+                new VmAllocationPolicySimple(hostList),
+
+                new LinkedList<Storage>(),
+
+                0
+
+            );
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+
+        }
+
+
+        return datacenter;
+
+    }
+
+
+    /**
+
+     * Creates a broker for the simulation
+
+     */
+
+    private static DatacenterBroker createBroker(String name) {
+
+        DatacenterBroker broker = null;
+
+        try {
+
+            broker = new DatacenterBroker(name);
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+
+            return null;
+
+        }
+
+        return broker;
+
+    }
+
+
+    /**
+
+     * Creates VMs with different configurations for different types of tasks
+
+     */
+
+    private static List<Vm> createVMs(int brokerId) {
+
+        List<Vm> vms = new ArrayList<>();
+
+        
+
+        // VM Types: Search, Order Processing, Browse
+
+        int[][] vmConfigs = {
+
+            {2000, 4096, 2000, 2},  // Search
+
+            {3000, 8192, 3000, 4},  // Order Processing
+
+            {2500, 6144, 2500, 2}   // Browse
+
+        };
+
+
+        for (int i = 0; i < NUM_VMS; i++) {
+
+            int configIndex = i % vmConfigs.length;
+
+            int[] config = vmConfigs[configIndex];
+
+
+            Vm vm = new Vm(
+
+                i,                              // VM ID
+
+                brokerId,                       // User ID
+
+                config[0],                      // MIPS
+
+                config[3],                      // Number of PEs
+
+                config[1],                      // RAM
+
+                config[2],                      // Bandwidth
+
+                10000,                          // Size
+
+                "Xen",                          // VMM
+
+                new CloudletSchedulerTimeShared()
+
+            );
+
+            vms.add(vm);
+
+        }
+
+        return vms;
+
+    }
+
+
+    /**
+
+     * Creates cloudlets representing different e-commerce tasks
+
+     */
+
+    private static List<Cloudlet> createCloudlets(int brokerId) {
+
+        List<Cloudlet> cloudlets = new ArrayList<>();
+
+        
+
+        // Task Types: Search, Order, Browse
+
+        long[][] configs = {
+
+            {10000, 300, 300, 1},  // Search
+
+            {20000, 500, 500, 2},  // Order
+
+            {15000, 400, 400, 1}   // Browse
+
+        };
+
+
+        UtilizationModel utilizationModel = new UtilizationModelFull();
+
+
+        for (int i = 0; i < INITIAL_CLOUDLETS; i++) {
+
+            int configIndex = i % configs.length;
+
+            long[] config = configs[configIndex];
+
+
+            Cloudlet cloudlet = new Cloudlet(
+
+                i,                              // ID
+
+                config[0],                      // Length
+
+                (int) config[3],                // PEs
+
+                config[1],                      // File Size
+
+                config[2],                      // Output Size
+
+                utilizationModel,               // Utilization Model CPU
+
+                utilizationModel,               // Utilization Model RAM
+
+                utilizationModel                // Utilization Model BW
+
+            );
+
+            cloudlet.setUserId(brokerId);
+
+            cloudlet.setVmId(i % NUM_VMS);
+
+            cloudlets.add(cloudlet);
+
+        }
+
+        return cloudlets;
+
+    }
+
+
+    /**
+
+     * Prints detailed results and statistics of the simulation
+
+     */
+
+    private static void printResults(List<Cloudlet> list) {
+
+        int size = list.size();
+
+        DecimalFormat dft = new DecimalFormat("###.##");
+
+
+        Log.printLine();
+
+        Log.printLine("=========================== RESULTS ===========================");
+
+        Log.printLine("Total Cloudlets Processed: " + size);
+
+        Log.printLine();
+
+        Log.printLine(String.format("%-12s%-10s%-12s%-10s%-12s%-12s%-12s",
+
+            "Cloudlet ID", "Status", "DC ID", "VM ID", "Time", "Start", "Finish"));
+
+
+        double totalTime = 0;
+
+        double maxTime = Double.MIN_VALUE;
+
+        double minTime = Double.MAX_VALUE;
+
+
+        for (Cloudlet cloudlet : list) {
+
+            double execTime = cloudlet.getFinishTime() - cloudlet.getExecStartTime();
+
+            totalTime += execTime;
+
+            maxTime = Math.max(maxTime, execTime);
+
+            minTime = Math.min(minTime, execTime);
+
+
+            Log.printLine(String.format("%-12d%-10s%-12d%-10d%-12.2f%-12.2f%-12.2f",
+
+                cloudlet.getCloudletId(),
+
+                "SUCCESS",
+
+                cloudlet.getResourceId(),
+
+                cloudlet.getVmId(),
+
+                execTime,
+
+                cloudlet.getExecStartTime(),
+
+                cloudlet.getFinishTime()));
+
+        }
+
+
+        Log.printLine();
+
+        Log.printLine("======================== STATISTICS ========================");
+
+        Log.printLine("Average Execution Time: " + dft.format(totalTime/size));
