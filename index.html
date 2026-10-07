@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exam Practice Quizzes</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--muted:#94a3b8;--border:#334155}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;display:flex;align-items:center;justify-content:center}
+  .wrap{width:100%;max-width:780px;padding:32px 16px}
+  h1{font-size:1.9rem;margin:0 0 6px}
+  .sub{color:var(--muted);margin:0 0 28px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+  a.card{display:block;text-decoration:none;color:var(--text);background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;transition:.18s;position:relative;overflow:hidden}
+  a.card::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;background:var(--c)}
+  a.card:hover{transform:translateY(-3px);border-color:var(--c)}
+  .code{font-size:.85rem;font-weight:700;letter-spacing:.08em;color:var(--c)}
+  .title{font-size:1.25rem;font-weight:700;margin:4px 0 8px}
+  .desc{color:var(--muted);font-size:.93rem;margin:0 0 16px}
+  .meta{display:flex;justify-content:space-between;align-items:center;font-size:.85rem;color:var(--muted)}
+  .go{color:var(--c);font-weight:700}
+  .progress{font-size:.8rem;color:var(--muted);margin-top:10px;min-height:1.2em}
+  footer{margin-top:28px;color:var(--muted);font-size:.85rem;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Exam Practice Quizzes</h1>
+  <p class="sub">Pick a course. Each quiz has 6 random question orders, and your progress is saved in this browser.</p>
+
+  <div class="grid">
+    <a class="card" href="apl524/" style="--c:#38bdf8" data-store="apl524_order_">
+      <div class="code">APL 524</div>
+      <div class="title">Programming Languages</div>
+      <p class="desc">Bindings, scope &amp; lifetime, BNF/grammars, data types, control structures, subprograms, 8086 assembly, OO and concurrency.</p>
+      <div class="meta"><span>~250 questions</span><span class="go">Start →</span></div>
+      <div class="progress"></div>
+    </a>
+
+    <a class="card" href="ase543/" style="--c:#a78bfa" data-store="ase543_order_">
+      <div class="code">ASE 543</div>
+      <div class="title">Software Engineering</div>
+      <p class="desc">Reliability &amp; security, process models, UML &amp; analysis, metrics &amp; estimation, scheduling, maintenance and reverse engineering.</p>
+      <div class="meta"><span>~200 questions</span><span class="go">Start →</span></div>
+      <div class="progress"></div>
+    </a>
+  </div>
+
+  <footer>Tip: inside a quiz, press a/b/c/… to answer and Enter for the next question.</footer>
+</div>
+
+<script>
+  // Show how many of the 6 orders have been started or completed for each course
+  document.querySelectorAll("a.card").forEach(card => {
+    const prefix = card.dataset.store;
+    let started = 0, done = 0;
+    for (let n = 1; n <= 6; n++){
+      const s = JSON.parse(localStorage.getItem(prefix + n) || "null");
+      if (s && s.pos > 0){ started++; }
+      if (s && s.missed !== undefined && s.pos > 0 && s.pos === s.score + s.missed.length && s.pos >= 150){ /* rough completion check */ }
+    }
+    if (started) card.querySelector(".progress").textContent = started + " of 6 orders in progress or completed";
+  });
+</script>
+</body>
+</html>

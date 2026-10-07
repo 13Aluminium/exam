@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASE 543 – Practice Quiz</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--muted:#94a3b8;--accent:#a78bfa;--good:#22c55e;--bad:#ef4444;--border:#334155}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+  .wrap{max-width:780px;margin:0 auto;padding:24px 16px 60px}
+  h1{font-size:1.6rem;margin:0 0 4px}
+  .sub{color:var(--muted);margin:0 0 24px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+  button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--border);background:#0b1222;color:var(--text);padding:12px 14px;text-align:left;transition:.15s}
+  button:hover:not(:disabled){border-color:var(--accent)}
+  button:disabled{cursor:default}
+  .order-btn{text-align:center;padding:18px}
+  .order-btn b{display:block;font-size:1.15rem}
+  .order-btn small{color:var(--muted)}
+  .top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;color:var(--muted);font-size:.9rem}
+  .bar{height:6px;background:var(--border);border-radius:99px;overflow:hidden;margin-bottom:18px}
+  .bar div{height:100%;background:var(--accent);width:0;transition:width .3s}
+  .q{font-size:1.1rem;margin:0 0 16px}
+  .q table{border-collapse:collapse;margin:10px 0;font-size:.9rem}
+  .q td,.q th{border:1px solid var(--border);padding:4px 10px}
+  .opts{display:flex;flex-direction:column;gap:8px}
+  .opt .l{display:inline-block;min-width:26px;font-weight:700;color:var(--accent)}
+  .opt.correct{border-color:var(--good);background:rgba(34,197,94,.15)}
+  .opt.wrong{border-color:var(--bad);background:rgba(239,68,68,.15)}
+  .fb{margin-top:16px;padding:12px 14px;border-radius:10px;display:none}
+  .fb.good{display:block;background:rgba(34,197,94,.12);border:1px solid var(--good)}
+  .fb.bad{display:block;background:rgba(239,68,68,.12);border:1px solid var(--bad)}
+  .actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+  .primary{background:var(--accent);color:#0f172a;border:none;font-weight:700;text-align:center}
+  .link{background:none;border:none;color:var(--muted);padding:6px 0;text-decoration:underline}
+  .missed{margin-top:18px}
+  .missed div{border-top:1px solid var(--border);padding:10px 0;font-size:.92rem}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>ASE 543 – Practice Quiz</h1>
+  <p class="sub" id="subtitle"></p>
+
+  <div id="menu" class="card">
+    <p style="margin-top:0">Pick a question order. Each order is a fixed shuffle, so you can come back to the same one.</p>
+    <div class="grid" id="orders"></div>
+  </div>
+
+  <div id="quiz" class="card hidden">
+    <div class="top">
+      <span id="progress"></span>
+      <span id="score"></span>
+      <button class="link" onclick="showMenu()">← Menu</button>
+    </div>
+    <div class="bar"><div id="barfill"></div></div>
+    <div class="q" id="qtext"></div>
+    <div class="opts" id="opts"></div>
+    <div class="fb" id="fb"></div>
+    <div class="actions"><button class="primary hidden" id="nextBtn" onclick="next()">Next →</button></div>
+  </div>
+
+  <div id="results" class="card hidden">
+    <h2 style="margin-top:0">Done!</h2>
+    <p id="final"></p>
+    <div class="actions">
+      <button class="primary" onclick="restart()">Retry this order</button>
+      <button onclick="showMenu()">Back to menu</button>
+    </div>
+    <div class="missed" id="missed"></div>
+  </div>
+</div>
+
+<script>
+/* ===================== QUESTION BANK ===================== */
+const Q = [];
+const L = "abcdefghij";
+function tf(q, ans, e){ Q.push({q, o:["True","False"], a: ans ? 0 : 1, e}); }
+function mc(q, o, ans, e){ Q.push({q, o, a: L.indexOf(ans), e}); }
+
+const AATV = ["Asset","Attack","Threat","Vulnerability"];
+const THREATS = ["Interception","Interruption","Modification","Fabrication"];
+const MAINT = ["Preventive","Corrective","Selective","Adaptive","Perfective"];
+const MAINT4 = ["Corrective","Adaptive","Preventive","Perfective"];
+const LOC_INFO = "<i>Assume an average productivity of 800 LOC per person-month, an estimate of 30,000 LOC, and a labor rate of $12,152 per month.</i><br>";
+const FP_INFO = "<i>Assume an average productivity of 6.0 FP per person-month, a labor rate of $1,200 per FP, a count-total of 320, and a value adjustment factor ΣFi = 30. FP = count-total × (0.65 + 0.01 × ΣFi).</i><br>";
+const TASKS = `<table><tr><th>Task</th><th>Effort (person-days)</th><th>Duration (days)</th><th>Dependencies</th></tr>
+<tr><td>T1</td><td>12</td><td>6</td><td>–</td></tr>
+<tr><td>T2</td><td>12</td><td>6</td><td>T1 (M1)</td></tr>
+<tr><td>T3</td><td>8</td><td>4</td><td>T2 (M2)</td></tr>
+<tr><td>T4</td><td>6</td><td>3</td><td>T1 (M1)</td></tr></table>`;
+
+/* ---- Reliability & Security ---- */
+mc("An erroneous system state that can lead to system behavior that is unexpected by system users is called:", ["System fault","System error","System failure"], "b");
+tf("Fault avoidance is the application of verification and validation techniques used to discover and remove faults in a system before it is deployed.", false, "That's fault detection and removal. Fault avoidance uses development techniques that reduce the chance of making mistakes.");
+tf("Reliability measures are system attributes that define the number of failures that are acceptable during normal use of the system.", true);
+mc("____ is the probability that the system will fail when a service request is made.", ["POFOD","ROCOF","AVAIL"], "a");
+mc("Among the benefits of creating a reliability specification is:", ["It provides a basis for assessing when to stop testing a system","It reduces the cost of the system","It can be created after the system is implemented"], "a");
+mc("A specialized system that is associated with some other control system, and can take emergency action if a failure occurs:", ["Protection system","Self-monitoring system","N-version system"], "a");
+mc("The fault-tolerant solutions studied in class have as a core concept:", ["Non-determinism","Redundancy","Formalism","All of the above","None of the above"], "b");
+mc("Which is true of a self-monitoring system?", ["It should monitor its own operations and take action if inconsistencies are detected","Extensive use should be made of diversity so hardware failure will not lead to each channel producing the same results","Multiple architectural channels are employed","All of the above","Only a and b"], "d");
+tf("An example of a validity check is range checking to determine if an input is acceptable.", true);
+mc("A reasonable exception handling strategy is to:", ["Push the problem to the calling unit","Try to fix the problem in the handler","Pass the problem to a run-time support system","All of the above","Only b and c"], "d");
+tf("In C, given <code>int nums[100];</code>, it is possible to address a memory location outside the declared range, e.g. <code>nums[105]</code>.", true, "C does no bounds checking.");
+mc("To recover from most post-delivery software faults it is usually enough to:", ["Throw exceptions and generate detailed error messages","Simply restart the program at a known stable point","Put the system in a safe state if an operational anomaly is detected"], "b");
+tf("The idea behind checkpoint and restart systems is similar to the Memento design pattern.", true);
+mc("Programming for reliability includes:", ["Using lots of gotos","Checking array bounds","Naming all real-world constants in programs","All of the above","Only b and c"], "e");
+tf("Reliability testing is essentially the same as normal software testing.", false);
+mc("An \"operational profile\" defines:", ["A set of classes of expected inputs to a software system","The expected frequency of input classes","The time spent in individual operational modules","All of the above","Only a and b"], "e");
+mc("By far, the largest source of threats to software security results from vulnerabilities in:", ["Networking hardware","Networking software","Application software","Incautious use of software","None of the above"], "c", "Most attacks target vulnerabilities in application software.");
+mc("Something of value which has to be protected:", AATV, "a");
+mc("Circumstances that have the potential to cause loss or harm:", AATV, "c");
+mc("A weakness in a computer-based system that may be exploited to cause loss or harm:", AATV, "d");
+mc("A threat that makes part of the system unavailable:", THREATS, "b");
+mc("A threat that allows an attacker to gain access to an asset:", THREATS, "a");
+mc("A threat that allows an attacker to insert false information into a system:", THREATS, "d");
+tf("Security requirements are classified into risk avoidance, risk detection and risk mitigation.", true);
+tf("A \"misuse case\" describes how an unauthorized user of a system might attack it.", true);
+tf("A key to providing system security and reliability is creating an appropriate architecture.", true);
+mc("Secure software design should:", ["Base decisions on an explicit security policy","Avoid a single point of failure","Specify the format of all system inputs","All of the above","Only a and b"], "d");
+tf("An issue with security testing is that security requirements are usually written as negatives, and it is very difficult to prove something won't happen.", true);
+tf("Dependable programming guidelines for security issues are essentially the same as those for reliability.", false, "Instructor's key marks False.");
+mc("The website of security issues shown in class was:", ["Internet Vulnerability Database","Common Vulnerability Enumeration","Common Weakness Enumeration (CWE)","Microsoft.com"], "c");
+
+/* ---- Process & project ---- */
+mc("The Unified Process model of software development is:", ["A reasonable approach when requirements are well defined","A useful approach when a customer cannot define requirements clearly","The best approach to use for projects with large development teams","A risky model that rarely produces a meaningful product"], "c");
+mc("A characteristic of a \"project\" is that a project:", ["Is unique","Has project criteria","Has a customer specified","Consumes resources","All of the above"], "e", "A project is also temporary.");
+mc("Software teams are formed based on which of the following factors?", ["The estimated size of the completed project","The language to be used in coding","The difficulty of the problem to be solved","All of the above","Only a and c"], "e");
+mc("A product scope statement defines:", ["The context of the product, as determined by how it fits into existing systems","The information objectives, as determined by customer-visible data","The function and performance of the product","All of the above","Only a and c"], "d");
+mc("Which is the correct flow of activities (left to right)?", ["Application domain → design model → analysis model → solution domain","Solution domain → design model → analysis model → application domain","Application domain → analysis model → design model → solution domain","None of the above"], "c");
+tf("The V process model is essentially the \"waterfall\" process model with testing tied to each major activity.", true);
+mc("Among the factors that help projects succeed is:", ["User involvement","An experienced project manager","Firm basic requirements","All of the above","None of the above"], "d");
+mc("Which diagram is not part of UML?", ["Use case","Sequence","DFD","Class","All of the above are UML diagrams"], "c");
+tf("\"Call and return\" architecture is based upon functions calling each other.", true);
+mc("A sequence diagram:", ["Depicts relationships between data objects","Depicts functions that transform data flow","Indicates how data are transformed by the system","Indicates user-system interaction in a temporal relationship"], "d");
+tf("\"Structured analysis\" views data and the processes that transform it as separate.", true);
+mc("The phases of the project management lifecycle that correspond to UP's construction and transition phases are:", ["Initiating and planning","Planning and execution","Execution and closing","Execution only","None of the above"], "c");
+tf("In a UML sequence diagram, arrows labeled with operations point to the class (object) that owns the operation.", true);
+mc("A software project's software configuration consists of:", ["Programs","Documents","Data","All of the above"], "d");
+tf("A \"baseline\" is a specification or product that has been formally reviewed and agreed upon, and thereafter serves as the basis for further development.", true);
+tf("A software configuration management repository is the set of mechanisms and data structures that allow a software team to manage change effectively.", true);
+mc("Among a software configuration management repository's features are:", ["Versioning or version control","Dependency tracking","Requirements tracking","Configuration management","All of the above"], "e");
+tf("Change control refers to the process of modifying elements before they are baselined.", false, "Change control applies after an item is baselined.");
+mc("Among the reasons to collect data on software products and processes is to:", ["Gain understanding of processes and products","Establish baselines for future comparisons","Determine project status with respect to plans","Improve processes and products by identifying root causes and inefficiencies","All of the above"], "e");
+
+/* ---- Metrics & estimation ---- */
+mc("Which is not used to calculate FPs?", ["Number of external inputs","Number of external outputs","Number of internal logical files","Number of potential use cases","They are all used to calculate FPs"], "d");
+tf("Function points are derived using an empirical relationship based on countable (direct) measures of the software's information domain and assessments of software complexity.", true);
+tf("Function point values are conditioned by weighting-factor multipliers for \"simple\", \"average\" and \"complex\" difficulty.", true);
+mc("Among the value adjustment factors for FPs is:", ["Does the system require backup and recovery features?","Are there multiple users at any point in time?","Are external databases used?","None of the above"], "a");
+mc("In OO metrics, the degree to which all operations work together to achieve a single, well-defined purpose:", ["Similarity","Coupling","Cohesion","Completeness","None of the above"], "c");
+mc("In OO metrics, an indirect implication about the degree to which the abstraction (class) or design component can be reused:", ["Similarity","Coupling","Cohesion","Completeness","None of the above"], "d");
+tf("Physical source lines are the length of code as it appears on paper or screen.", true);
+tf("Logical source lines are the length of code as it appears on paper or screen.", false, "That's physical lines. Logical lines count statements.");
+mc("The goal of software project planning is to:", ["Gather requirements, design software modules and implement code","Systematically test software components","Control, track and monitor a complex technical project"], "c");
+tf("The software scope describes, in part, the functions and features that are to be delivered to end users.", true);
+mc("Among the ways to define software scope is:", ["To create a software architecture before coding commences","Estimate the number of person-months to complete the project","To develop a set of use cases created by end users","Determine project status with respect to plans","All of the above","None of the above"], "c");
+mc(LOC_INFO + "How many person-months will this project take?", ["44","37.5","3.75","None of the above"], "b", "30,000 ÷ 800 = 37.5");
+mc(LOC_INFO + "What is the estimated cost of this project?", ["$440,000","$412,500","$1,150,000","None of the above","Cannot be determined from the information given"], "d", "37.5 × $12,152 = $455,700");
+tf(LOC_INFO + "The cost per LOC on this project is $15.19.", true, "$455,700 ÷ 30,000 ≈ $15.19");
+mc(FP_INFO + "What is FP for this project?", ["220","252","304","357","None of the above"], "c", "320 × (0.65 + 0.30) = 304");
+mc(FP_INFO + "How many person-months will the project last (rounded up)? Person-months = FP ÷ avg productivity.", ["49","32","20","51","None of the above"], "d", "304 ÷ 6 = 50.67, which rounds up to 51.");
+mc(FP_INFO + "What is the total cost of the project?", ["$242,000","$149,600","$277,200","$392,700","None of the above"], "e", "304 FP × $1,200 = $364,800 (or $367,200 using 51 rounded person-months). Neither matches the choices.");
+tf("Using functional decomposition techniques (like counting processes in a DFD) for estimation leads to highly accurate and detailed estimates.", false);
+tf("A critical path is a chain of tasks that determines the duration of a project.", true);
+mc("Which COCOMO II model is used during the earliest stages of software engineering?", ["Application composition model","Early design stage model","Reuse model","Post-architecture model","None of the above"], "a");
+mc("Project risk components are categorized by:", ["Performance, cost, support and schedule","Mitigation, monitoring and management"], "a");
+mc("Risk exposure is computed as:", ["The probability that a risk will occur","The cost to the project if the risk should occur","The product of a and b"], "c");
+mc("Among the reasons projects are delivered late is:", ["An unrealistic deadline established by someone outside the development group","Changing customer requirements not reflected in schedule changes","An honest underestimate of the effort and/or resources required","All of the above"], "d");
+tf("The most reasonable order for the project scheduling process is: estimate activity resources, allocate people, identify activities, find activity dependencies.", false, "The order is: identify activities, identify dependencies, estimate resources, allocate people, create charts.");
+mc("Project activities (tasks):", ["Are the basic planning elements","Have a duration in days, weeks or months of calendar time","Need an estimate of effort in person-days or person-months","All of the above"], "d");
+tf("A WBS is a hierarchical description of all the activities scheduled for a project.", true);
+tf("A task network is a graphical representation of task flow for a project, used to help set up task sequences and dependencies.", true);
+mc("Which is not a scheduling principle?", ["Compartmentalization","Risk analysis","Determining task interdependency"], "b");
+tf("The reason adding people to a late project makes it later is that the new person drains time from other project participants to get up to speed.", true);
+mc("In EVA, budgeted cost of work performed (BCWP) is the value of:", ["All work tasks that should have been completed by a point on the schedule","All work tasks that have actually been completed by a point on the schedule","The effort actually expended on work tasks completed by a point in time","None of the above"], "b", "Choice c describes ACWP (actual cost of work performed).");
+tf("PERT and CPM do completely different tasks in software project scheduling.", false);
+mc("A recommended distribution of effort across front-end activities, construction, and testing is:", ["40-20-40 %","20-40-40 %","20-60-20 %"], "a");
+mc("According to Boehm's model of cost changes, the relative cost of correcting an error during field operations (relative to requirements) is ____ times more costly.", ["10","200","400","1000","2000"], "b", "Boehm's figures are commonly cited as 100–200×. Check this against your class notes.");
+mc("One of the most important factors in estimating cost and schedule for a project is:", ["The experience level of the estimator","Computing expected cost","Access to good historical metrics","All of the above","Only a and c"], "e");
+tf("One way to estimate the size of a software project is to rely on \"expert judgment\".", true);
+tf("Process measurement is done indirectly by measuring the outcomes of the process itself.", true);
+mc("One of the goals of tracking process metrics is:", ["To determine organizational productivity","To identify problem employees and retrain them","Both a and b"], "a");
+tf("A typical project metric counts effort per software engineering task.", true);
+mc("Project metrics should:", ["Measure the resources consumed in the project","Count the deliverables or work products created","Determine the effectiveness of the deliverables or work products","All of the above","Only a and b"], "d");
+mc("A useful project metric for OO systems is:", ["The number of scenario scripts (use cases)","The number of support classes per analysis class","FP per person-month","All of the above","Only a and b"], "e");
+tf("A danger of underestimating a project is that the project team will likely have difficulty making the shortened deadlines.", true);
+tf("Process-based estimation approximates the time needed for each activity of the process model, ties it to historical productivity data for each activity, and then sums these up to produce a total for the project.", true);
+mc("Bottom-up estimating based on a work breakdown structure:", ["Is a flawed technique that requires \"expert\" judgment","Can produce accurate results if process activities are well understood","Is a time-consuming process","None of the above","Only b and c"], "e");
+mc("In almost all estimating techniques, but particularly algorithmic approaches, estimate accuracy is affected by:", ["The estimator's ability to properly determine the size of the product","The organization's past history of metrics collection","The ability to translate the size estimate into person-months and costs","All of the above","Only a and c"], "e");
+mc("Defect removal efficiency is:", ["DRE = E/(E+D), where E = errors found after delivery and D = defects found before delivery","DRE = E/(E+D), where E = errors found before delivery and D = defects found after delivery"], "b");
+mc("A(n) ____ is a quantitative measure of the degree to which a system, component, or process possesses a given attribute.", ["Measure","Staging","Metric","None of the above"], "c");
+mc("A(n) ____ is a metric or combination of metrics that provides insight into the software process, a software project, or the product itself.", ["Measure","Indicator","Metric","None of the above"], "b");
+tf("A good quality for a metric to have is to be simple and computable.", true);
+tf("A good quality for a metric to have is to be programming-language independent.", true);
+tf("A metric's attributes should be programming-language independent.", true);
+mc("Which one is not a product metric?", ["Halstead's metrics","\"Hanson Index\"","McCabe cyclomatic complexity","Function points"], "b", "The original listed \"Hanson Index\" twice. It's the made-up option.");
+
+/* ---- Scheduling / EVA ---- */
+tf("The optimal development time (in terms of cost) for a project is not \"the earliest possible time\".", true, "The study guide marks False, but per the Putnam-Norden-Rayleigh curve, compressing to the earliest time costs more effort, so the statement is true.");
+mc("Earned value analysis computes budgeted cost of work scheduled (BCWS). This value represents:", ["The total amount of work for the entire project","The total amount of work accomplished for a task at a point in time","The total amount of work planned for a single task","None of the above"], "c");
+mc("Project scheduling takes place ____ project estimates.", ["Before","After","During"], "b");
+mc("PERT is a technique for determining:", ["The critical path for a project","The costs associated with a risk","The cost associated with a software engineering task"], "a");
+mc("Earned value analysis:", ["Computes project progress","Uses known data from previous projects","Is not only a single value (it's a collection of values)","Both a and b","Both a and c"], "e");
+tf("A critical path is a list of tasks that can be started simultaneously in a project.", false);
+mc("An important factor in estimation for OO projects is:", ["Determining the number of key classes","Developing estimates of the number of users","Categorizing the types of users","All of the above"], "a");
+tf("The \"make or buy\" decision is supported by and computed by determining cost.", true);
+mc("Which is not a risk due to \"business impact\"?", ["The effect the product has on company revenue","Costs associated with late delivery","Whether CASE tools are used for analysis, design and testing","They are all business impact risks"], "c");
+mc("WBS means:", ["Work breakdown schedule","Work breakdown structure"], "b");
+tf("The \"risk table\" is sorted by risk probability and risk impact.", true);
+mc(TASKS + "The critical path for this project is:", ["T1 → T2 → T3","T1 → T2 → T3 → T4","T1 → T3 → T4","None of the above"], "a", "T1 + T2 + T3 = 6 + 6 + 4 = 16 days. T1 + T4 is only 9 days.");
+tf(TASKS + "If we remove T3's dependency on T2 and let T3 start after T1, the project will take 12 days (assuming two people per task).", true, "Paths: T1+T2 = 12, T1+T3 = 10, T1+T4 = 9. The longest is 12.");
+mc("Scheduling resources for a software project would not be possible without:", ["Understanding the language requirements for coding","Every task having a defined outcome","The project being compartmentalized into manageable tasks","All of the above"], "c");
+
+/* ---- Maintenance & reverse engineering ---- */
+mc("Adding new pieces of hardware to an existing system usually requires what type of maintenance?", ["Perfective","Corrective","Adaptive"], "c");
+mc("Problem (bug) reports:", ["Should be written","Are most helpful when they contain information on how to reproduce the problem","Should have only one bug per report","All of the above","Only a and b"], "d");
+mc("Among the legal reasons to reverse engineer someone else's software is:", ["To achieve interoperability with proprietary software / develop competing software","To evaluate software quality and robustness","To learn the steps of an algorithm","All of the above","Only a and b"], "e");
+tf("The reverse engineering case that started the PC clone industry was IBM vs Phoenix.", true);
+tf("The most important goal of an obfuscation technique is that it should be maximally stealthy, that is, hidden from the reverse engineer's knowledge.", true);
+tf("An anti-reverse-engineering technique is removing symbolic information from compiled code.", true);
+tf("Control transformation as an obfuscation technique should alter program semantics (behavior).", false);
+mc("Control transformation as an obfuscation technique:", ["Should not alter program semantics (behavior)","Usually involves an \"opaque\" predicate","May introduce new execution paths","All of the above","Only a and b"], "d");
+tf("A watermark in a program or media file is a secret message that can be used to prove ownership of the program or media.", true);
+tf("Static program comprehension is based on analyzing source code structure.", true);
+mc("Static program comprehension:", ["Is based on analyzing source code structure","Is based on observed program behavior","Looks at execution traces and call graphs","All of the above","Only b and c"], "a");
+tf("Program comprehension is what maintenance programmers spend most of their time doing.", true);
+mc("Which \"mental model\" element relies on programmers recognizing key statements that help them understand what the code is doing?", ["Text structure","Chunks","Beacons"], "c", "Instructor's key marks Beacons. Chunks are groups of statements understood as a unit.");
+mc("One key factor in scaling up program comprehension is:", ["The use of parsing technologies for automatic code analysis","Programmer practice at reading code","Application of Lehman's second law"], "a");
+tf("Lehman's first law basically says that programs in a real-world environment must change or become less useful in that environment.", true);
+tf("According to Lehman, S-type programs are those that model real-world processes and become part of the real world by their use.", false, "That describes E-type programs. S-type programs are formally specified.");
+tf("About 60% of faults are found by rigorous testing of the code after implementation.", false, "Most are found by inspections and reviews of requirements, design, and code before implementation.");
+tf("Grace Hopper invented the term \"bug\" to describe a program defect.", false, "She popularized the story of the moth, but the term predates her.");
+tf("The term \"bug\" was coined because a moth got into an early electro-mechanical computer and crashed it.", true);
+mc("Fixing potential Y2K problems. What type of maintenance is this?", MAINT, "a");
+mc("A fault was found in our software that causes inaccurate results and must be fixed. What type of maintenance is this?", MAINT, "b");
+mc("We are adding the ability to sort on any field in the employee record. What type of maintenance is this?", MAINT, "e");
+mc("A new bar code reader has been manufactured for our system and we must change our software to use it. What type of maintenance is this?", MAINT, "d");
+mc("Which type of maintenance deals with problems arising from new hardware and software interfaces?", MAINT4, "b");
+mc("Refactoring is an example of ____ maintenance.", MAINT4, "c");
+mc("Which type of software maintenance takes the largest percentage of maintenance effort?", MAINT4, "d");
+tf("Corrective maintenance is aimed at adding missing functionality.", false);
+tf("Developing new software costs more than maintaining old software.", true);
+tf("If we wrote perfect programs completely free of faults, we would never need software maintenance.", false, "Adaptive and perfective maintenance would still be needed.");
+tf("The Y2K issue resulted from COBOL programs that used 2-digit year date fields.", true);
+mc("Courts have consistently ruled that reverse engineering of copyrighted software is:", ["Legal if the reverse engineering does not use any of the code","Legal no matter how much original code is used"], "a");
+mc("One of the issues with disassembly of a binary code file is:", ["There's too much symbolic information about variables","There's no symbolic information about variables","It's impossible to tell the difference between one subprogram and another","All of the above","Only b and c"], "b");
+tf("Refactoring is a type of reverse engineering that relies on disassembly of binary files.", false);
+tf("Refactoring should be done on code that \"smells\".", true);
+tf("A \"misuse case\" describes how a user of a system might attack the system.", true);
+mc("Which is not a problem associated with software maintenance?", ["There is plenty of accurate, up-to-date documentation","The software is written in an older, unfamiliar language","None of the original designers are available","You can't find all the source code"], "a");
+mc("Software maintenance is the ____ phase of a software's lifecycle.", ["Shortest","Cheapest","Most expensive","Smelliest"], "c");
+
+/* ---- Process models ---- */
+mc("Which is not a recognized process flow?", ["Linear","Transformational","Iterative","Evolutionary"], "b", "The four flows are linear, iterative, evolutionary, and parallel.");
+mc("Which are recognized process flow types?", ["Evolutionary flow","Iterative process flow","Linear process flow","Parallel process flow","All","Only a and b"], "e");
+tf("Extreme Programming (XP) is a \"use-case driven, architecture-centric, iterative and incremental\" software process closely aligned with UML.", false, "That describes the Unified Process.");
+tf("Of the \"four P's\" of a project, process is the most important element of a successful project.", false, "People is the most important.");
+mc("Which is not one of the 4 P's of a software project?", ["Project","Planning","Process","Product","People"], "b");
+tf("Boundary classes are used to create a user interface to software.", true);
+tf("Regardless of the type of stakeholder (customer, manager, architect, developer), they all share the same set of concerns for a project.", false);
+tf("Formal, interpersonal procedures for team coordination and communication focus on quality assurance activities applied to software engineering work products.", true);
+mc("DFDs are useful in representing which analysis model element?", ["Behavioral elements","Class-based elements","Flow-based elements","Scenario-based elements"], "c");
+mc("UML use case diagrams are useful in representing which analysis model elements?", ["Algorithmic elements","Class-based elements","Flow-based elements","Scenario-based elements"], "d");
+mc("Which is not a process model umbrella activity?", ["Software project management","Software quality assurance","Use case modeling","Reusability management"], "c");
+mc("Which is not a process model umbrella activity?", ["Software project management","Software quality assurance","Modeling and control","Reusability management","All of the above are umbrella activities"], "c");
+mc("Which is not a process model umbrella activity?", ["Software project management","Software quality assurance","Monitoring and control","Reusability management","All of the above are umbrella activities"], "e");
+tf("IEEE Standard 1058.1 defines the phases of project management.", true, "IEEE 1058 is the Software Project Management Plan standard. Check the exact wording against your notes.");
+tf("The 5 generic software engineering framework activities are communication, planning, sequencing, construction and integration.", false, "They are communication, planning, modeling, construction, and deployment.");
+mc("The iterative model of software development is:", ["A reasonable approach when requirements are well defined","A useful approach when a customer cannot define requirements clearly","The best approach for projects with large development teams","A risky model that rarely produces a meaningful product"], "b");
+tf("In traditional software requirements gathering, interviewing stakeholders is the primary technique used.", true);
+tf("Typically a use case may have multiple success and failure scenarios.", true);
+mc("The older waterfall process model had several flaws, including:", ["A design gap between the analysis model and design model","No working functionality until the entire system was complete","Little to no consideration for changes in requirements","All"], "d");
+tf("The Unified Process (sometimes called the Rational Unified Process) is an agile process closely aligned with UML.", false);
+tf("Use case and use case diagram are two different names for the same concept.", false);
+mc("A Scrum \"sprint\" involves:", ["A coordinated company-wide exercise program to keep coders alert","A short team meeting conducted while standing","A unit of work derived from a backlog of existing requirements","None of the above"], "c");
+mc("A benefit of using CRC cards for modeling is:", ["The cards can be ordered to represent priorities","They can be passed around to others","They can be thrown away when no longer needed","All of the above"], "d");
+mc("Which of the following are part of \"agility\" in agile methods?", ["Effective (rapid and adaptive) response to change","Effective communication among all stakeholders","Drawing the customer onto the team","Organizing a team so that it is in control of the work performed","They are all part of \"agility\""], "e");
+tf("While not ideal, the cost of change in agile software development is less than in more traditional process models.", true);
+tf("Since users are not typically trained in software development, constant user involvement is viewed by most agile methods as a liability.", false);
+mc("During project inception, the intent of the tasks is to determine:", ["Basic problem understanding (vision document)","Data structures required","Algorithms needed","None of the above"], "a");
+mc("A generic software development process model needs:", ["A framework, umbrella activities, framework activities and task sets","Iteration to make sure all requirements are captured","Good debugging to remove all errors during development"], "a");
+tf("In a software project the role of the customer is to specify the requirements for the software to be engineered.", true);
+mc("Which is NOT true of XP?", ["The customer writes the user stories","XP teams have only two members","XP is a linear process model","XP is an agile process model","Both b and c"], "e", "XP uses pairs but teams are larger, and it is iterative, not linear.");
+
+/* ---- Analysis & design ---- */
+mc("Which of the following is a typical operation performed by a class?", ["Operations that manipulate data in some way","Operations that perform a computation","Operations that inquire about the state of an object","Operations that monitor an object for controlling events","All of the above"], "e");
+tf("In a UML class diagram, aggregation is represented by a black diamond pointing to the aggregating class from the aggregated class.", false, "A black (filled) diamond is composition. Aggregation is a hollow diamond.");
+tf("The \"Blob\" anti-pattern describes an OO structure in which one class contains almost all the functional elements of a program and all other classes are mere data holders.", true);
+tf("A functional requirement is anything you can write code to achieve.", true);
+mc("A data-centered architecture is:", ["Common in business applications","An older form of program architecture","Requires careful management of data to avoid corruption","All of the above"], "d");
+mc("What is not visible in a class diagram?", ["Relationships between classes","Class behavior","Class attributes","Class operations","They are all visible"], "b");
+tf("Analysis classes are determined by underlining each noun or noun phrase and entering it into a simple table.", true);
+tf("All use case actors must be human.", false);
+tf("A user story represents a feature or function of software which is used by an actor.", true);
+tf("Entity classes are derived from the project's application domain.", true);
+tf("In a local version control system, it is possible to share files in the repository.", false);
+mc("In a centralized version control system:", ["A single server contains all the versioned files","Only one client at a time can check out files from the server","Files can't be shared","All of the above"], "a");
+mc("In Git, ____ means diverging from the main line of development and starting a new line of development.", ["Committing","Branching","Checkout","Staging","None of the above"], "b");
+mc("One view of requirements that considers data and the processes that transform the data as connected entities is called:", ["Object-oriented analysis","Structured analysis","Top-down analysis","ERD"], "d", "The study guide's checked answer is ERD. Check this one against your notes.");
+mc("Analysis classes differ from data objects primarily in:", ["That classes can have operations and data objects cannot","That data objects can have operations and classes cannot","No way"], "a");
+mc("A data object consists of:", ["Data attributes of the entity","Name of the entity","Operations of the entity","All of the above","Only a and b"], "e");
+mc("Cohesion is a qualitative indication of the degree to which a module:", ["Can be written more compactly","Focuses on just one thing","Is able to complete its function in a timely manner","Is connected to other modules and the outside world","Both a and d"], "b");
+mc("Coupling is a qualitative indication of the degree to which a module:", ["Can be written more compactly","Focuses on just one thing","Is able to complete its function in a timely manner","Is connected to other modules and the outside world","All of the above","Mon aéroglisseur est plein d'anguilles!"], "d");
+tf("Horizontal partitioning of a software architecture defines separate branches of the module hierarchy for each major program function.", true);
+mc("The most common layered architecture is called:", ["The boundary-controller-entity architecture","The client-server architecture","The 3-tier architecture","Star network architecture"], "c");
+mc("An architectural style encompasses which of the following elements?", ["Constraints","A set of components","Semantic models","All of the above"], "d");
+mc("Data that outlasts the current execution of a program is called:", ["Permanent data","Persistent data","Processed data","Procedural data"], "b");
+tf("Before an architectural pattern (client-server, peer-to-peer, etc.) can be chosen for a system, it must have a code implementation to facilitate its reuse.", false);
+mc("Which of these is not an element of a requirements model?", ["Behavioral elements","Class-based elements","Data elements","Scenario-based elements"], "c");
+mc("Among the typical means used to gather requirements are:", ["Interviewing users","Analyzing forms used by the organization","Questionnaires given to users","Creating prototypes","All of the above"], "e");
+mc("Which of the following is not part of a CRC card?", ["Class data flow","Class name","Class responsibility","Class collaboration"], "a");
+mc("The concept of data abstraction is similar to the creation of:", ["Use cases","Class diagrams","Data objects","None of the above"], "c");
+mc("A(n) ____ is the overall structure of a software system.", ["Class diagram","Architecture","Process","Relation"], "b");
+mc("Which is not an architectural style?", ["Batch sequential","Layered","Data centered","Throw and catch"], "d");
+tf("In peer-to-peer networks, there is no server to control communication among nodes.", true);
+mc("In practice, most software products have architectures that are:", ["Communicating processes","Call and return","Heterogeneous (mixed architectures)","Data centered","None of the above"], "c");
+
+/* ===================== QUIZ ENGINE ===================== */
+const STORE = "ase543_order_";
+const NUM_ORDERS = 6;
+function rng(seed){ return function(){ seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function orderFor(n){ const idx = Q.map((_, i) => i); const r = rng(n * 7919 + 31); for (let i = idx.length - 1; i > 0; i--){ const j = Math.floor(r() * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]]; } return idx; }
+
+let state = null;
+const $ = id => document.getElementById(id);
+const key = n => STORE + n;
+function save(){ localStorage.setItem(key(state.n), JSON.stringify({pos: state.pos, score: state.score, missed: state.missed})); }
+
+function showMenu(){
+  $("quiz").classList.add("hidden"); $("results").classList.add("hidden"); $("menu").classList.remove("hidden");
+  const box = $("orders"); box.innerHTML = "";
+  for (let n = 1; n <= NUM_ORDERS; n++){
+    const s = JSON.parse(localStorage.getItem(key(n)) || "null");
+    const b = document.createElement("button"); b.className = "order-btn";
+    const status = s && s.pos > 0 ? (s.pos >= Q.length ? "Completed – " + s.score + "/" + Q.length : "Resume at Q" + (s.pos + 1)) : "Not started";
+    b.innerHTML = "<b>Order " + n + "</b><small>" + status + "</small>";
+    b.onclick = () => start(n);
+    box.appendChild(b);
+  }
+}
+
+function start(n){
+  const s = JSON.parse(localStorage.getItem(key(n)) || "null");
+  state = {n, order: orderFor(n), pos: 0, score: 0, missed: []};
+  if (s && s.pos < Q.length){ Object.assign(state, s); }
+  $("menu").classList.add("hidden"); $("results").classList.add("hidden"); $("quiz").classList.remove("hidden");
+  render();
+}
+
+function restart(){ localStorage.removeItem(key(state.n)); start(state.n); }
+
+function render(){
+  if (state.pos >= Q.length) return finish();
+  const q = Q[state.order[state.pos]];
+  $("progress").textContent = "Order " + state.n + " · Question " + (state.pos + 1) + " / " + Q.length;
+  $("score").textContent = "Score: " + state.score;
+  $("barfill").style.width = (state.pos / Q.length * 100) + "%";
+  $("qtext").innerHTML = q.q;
+  $("fb").className = "fb"; $("fb").innerHTML = "";
+  $("nextBtn").classList.add("hidden");
+  const box = $("opts"); box.innerHTML = "";
+  q.o.forEach((text, i) => {
+    const b = document.createElement("button"); b.className = "opt";
+    const l = document.createElement("span"); l.className = "l"; l.textContent = L[i] + ".";
+    b.appendChild(l); b.appendChild(document.createTextNode(" " + text));
+    b.onclick = () => answer(i);
+    box.appendChild(b);
+  });
+  window.scrollTo({top: 0, behavior: "smooth"});
+}
+
+function answer(i){
+  const q = Q[state.order[state.pos]];
+  const btns = [...$("opts").children];
+  btns.forEach(b => b.disabled = true);
+  const fb = $("fb");
+  if (i === q.a){
+    btns[i].classList.add("correct");
+    state.score++;
+    fb.className = "fb good"; fb.innerHTML = "✅ Correct!" + (q.e ? " <span style='color:var(--muted)'>" + q.e + "</span>" : "");
+    state.pos++; save();
+    setTimeout(render, q.e ? 1400 : 700);
+  } else {
+    btns[i].classList.add("wrong"); btns[q.a].classList.add("correct");
+    fb.className = "fb bad";
+    fb.innerHTML = "❌ Not quite. Correct answer: <b>" + L[q.a] + ". " + escapeHTML(q.o[q.a]) + "</b>" + (q.e ? "<br><span style='color:var(--muted)'>" + q.e + "</span>" : "");
+    state.missed.push(state.order[state.pos]);
+    state.pos++; save();
+    $("nextBtn").classList.remove("hidden");
+  }
+}
+
+function next(){ render(); }
+function escapeHTML(s){ return s.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+
+function finish(){
+  $("quiz").classList.add("hidden"); $("results").classList.remove("hidden");
+  const pct = Math.round(state.score / Q.length * 100);
+  $("final").textContent = "Order " + state.n + ": you scored " + state.score + " / " + Q.length + " (" + pct + "%).";
+  const m = $("missed");
+  m.innerHTML = state.missed.length ? "<h3>Questions you missed</h3>" : "<p>Perfect run! 🎉</p>";
+  state.missed.forEach(qi => {
+    const q = Q[qi]; const d = document.createElement("div");
+    d.innerHTML = q.q + "<br><b style='color:var(--good)'>Answer: " + L[q.a] + ". " + escapeHTML(q.o[q.a]) + "</b>";
+    m.appendChild(d);
+  });
+}
+
+$("subtitle").textContent = Q.length + " questions · 6 random orders · progress is saved in your browser";
+document.addEventListener("keydown", e => {
+  if ($("quiz").classList.contains("hidden")) return;
+  if (e.key === "Enter" && !$("nextBtn").classList.contains("hidden")) return next();
+  const i = L.indexOf(e.key.toLowerCase());
+  const btns = [...$("opts").children];
+  if (i >= 0 && i < btns.length && !btns[i].disabled) answer(i);
+});
+showMenu();
+</script>
+</body>
+</html>

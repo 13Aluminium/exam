@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>APL 524 – Practice Quiz</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--muted:#94a3b8;--accent:#38bdf8;--good:#22c55e;--bad:#ef4444;--border:#334155}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+  .wrap{max-width:780px;margin:0 auto;padding:24px 16px 60px}
+  h1{font-size:1.6rem;margin:0 0 4px}
+  .sub{color:var(--muted);margin:0 0 24px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+  button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--border);background:#0b1222;color:var(--text);padding:12px 14px;text-align:left;transition:.15s}
+  button:hover:not(:disabled){border-color:var(--accent)}
+  button:disabled{cursor:default}
+  .order-btn{text-align:center;padding:18px}
+  .order-btn b{display:block;font-size:1.15rem}
+  .order-btn small{color:var(--muted)}
+  .top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;color:var(--muted);font-size:.9rem}
+  .bar{height:6px;background:var(--border);border-radius:99px;overflow:hidden;margin-bottom:18px}
+  .bar div{height:100%;background:var(--accent);width:0;transition:width .3s}
+  .q{font-size:1.1rem;margin:0 0 16px}
+  .q pre{background:#0b1222;border:1px solid var(--border);border-radius:8px;padding:10px 12px;overflow-x:auto;font-size:.85rem;line-height:1.35}
+  .opts{display:flex;flex-direction:column;gap:8px}
+  .opt .l{display:inline-block;min-width:26px;font-weight:700;color:var(--accent)}
+  .opt.correct{border-color:var(--good);background:rgba(34,197,94,.15)}
+  .opt.wrong{border-color:var(--bad);background:rgba(239,68,68,.15)}
+  .fb{margin-top:16px;padding:12px 14px;border-radius:10px;display:none}
+  .fb.good{display:block;background:rgba(34,197,94,.12);border:1px solid var(--good)}
+  .fb.bad{display:block;background:rgba(239,68,68,.12);border:1px solid var(--bad)}
+  .actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+  .primary{background:var(--accent);color:#0f172a;border:none;font-weight:700;text-align:center}
+  .link{background:none;border:none;color:var(--muted);padding:6px 0;text-decoration:underline}
+  .missed{margin-top:18px}
+  .missed div{border-top:1px solid var(--border);padding:10px 0;font-size:.92rem}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>APL 524 – Practice Quiz</h1>
+  <p class="sub" id="subtitle"></p>
+
+  <!-- MENU -->
+  <div id="menu" class="card">
+    <p style="margin-top:0">Pick a question order. Each order is a fixed shuffle, so you can come back to the same one.</p>
+    <div class="grid" id="orders"></div>
+  </div>
+
+  <!-- QUIZ -->
+  <div id="quiz" class="card hidden">
+    <div class="top">
+      <span id="progress"></span>
+      <span id="score"></span>
+      <button class="link" onclick="showMenu()">← Menu</button>
+    </div>
+    <div class="bar"><div id="barfill"></div></div>
+    <div class="q" id="qtext"></div>
+    <div class="opts" id="opts"></div>
+    <div class="fb" id="fb"></div>
+    <div class="actions"><button class="primary hidden" id="nextBtn" onclick="next()">Next →</button></div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results" class="card hidden">
+    <h2 style="margin-top:0">Done!</h2>
+    <p id="final"></p>
+    <div class="actions">
+      <button class="primary" onclick="restart()">Retry this order</button>
+      <button onclick="showMenu()">Back to menu</button>
+    </div>
+    <div class="missed" id="missed"></div>
+  </div>
+</div>
+
+<script>
+/* ===================== QUESTION BANK ===================== */
+const Q = [];
+const L = "abcdefghij";
+function tf(q, ans, e){ Q.push({q, o:["True","False"], a: ans ? 0 : 1, e}); }
+function mc(q, o, ans, e){ Q.push({q, o, a: L.indexOf(ans), e}); }
+
+const BIND4 = ["Language design time","Compile time","Load time","Run time"];
+const BIND5 = [...BIND4, "None of the above"];
+
+const ASM_ADD = `<pre>;call the sub
+      mov  ax, 5                ;1
+      push ax                   ;2
+      mov  ax, 7                ;3
+      push ax                   ;4
+      call add                  ;5
+      mov  answer, ax           ;6
+add   proc                      ;7
+      push bp                   ;8
+      mov  bp, sp               ;9
+      mov  ax, word ptr [bp+4]  ;10
+      mov  bx, word ptr [bp+6]  ;11
+      add  ax, bx               ;12
+      pop  bp                   ;13
+      ret  4                    ;14
+add   endp                      ;15</pre>`;
+
+const PROCP = `<pre>procp proc
+      push bp              ;save stack frame
+      mov  bp, sp          ;create stack frame
+      sub  sp, 4           ;create 2 local variables
+      mov  word ptr [bp-2], -1
+      mov  sp, bp
+      pop  bp
+      ret                  ;no parameters
+procp endp</pre>`;
+
+const CFUNC_X = `<pre>int x(int a, int b){
+   int d;
+   if (a + b > 10){
+      int c = a + b;
+      d = c;
+   }
+   return d;
+}</pre>`;
+
+const ARITH_IF = `<pre>1        IF (I) 10, 20, 30
+2        GOTO 50
+3  10    PRINT*, '1'
+4        GOTO 50
+5  20    PRINT*, '2'
+6        GOTO 50
+7  30    PRINT*, '3'
+8  50    CONTINUE</pre>`;
+
+const COMP_GOTO = `<pre>      INTEGER M
+      M = 2
+      GOTO (15, 30, 45, 60) M*15
+      GOTO 100
+15    PRINT*, '1'
+      GOTO 100
+30    PRINT*, '2'
+      GOTO 100
+45    PRINT*, '3'
+      GOTO 100
+60    CONTINUE
+100   CONTINUE</pre>`;
+
+const FIB = `<pre>      PROGRAM FIBONA          -1
+      INTEGER S, F(40)        -2
+                              -3
+      F(1) = 1                -4
+      F(2) = 1                -5
+      DO 11 S = 3, 40         -6
+         F(S) = F(S-1) + F(S-2) -7
+11    CONTINUE                -8
+      PRINT 10, F             -9
+10    FORMAT (1X, 5I12)       -10
+      END                     -11</pre>`;
+
+const FUNC1 = `<pre>int func1(int *a){
+   *a += 5;
+   return 2 * (*a);
+}</pre>Assume <code>int i = 10;</code> in the caller and <code>int sum = func1(&amp;i) + (i/2);</code>`;
+const FUN = `<pre>int fun(int *k){
+   *k += 4;
+   return 3 * (*k) - 1;
+}</pre>Assume <code>int i = 10;</code> in the caller and <code>int sum = fun(&amp;i) + (i/2);</code>`;
+
+const MASM_DECL = `<pre>Var1  DB  14
+Var2  DW  54</pre>Assume AX = 11 and BX = 50.<br>`;
+
+const CTRL = ["compound statement","control statement","control structure","do-while","goto","multiple selection","selection statement","switch","two-way selector","while"];
+const GRAM = ["the lexemes and tokens of the rules","the abstractions in a BNF description","a BNF description or collection of rules","each successive sentential form in the sequence is a ___ of the previous sentential form","the meaning of a programming language's syntax","the form of a programming language's expressions, statements, and program units","the process of tracing or constructing a parse tree for a given input","the hierarchical syntactic structure of the sentences that define a language","in its final form it contains no nonterminals and is the generated sentence; intermediate forms are each of the strings in a derivation","a language used to describe another language"];
+
+/* ---- Main question set ---- */
+tf("COBOL is the only major compiled language that uses keywords rather than reserved words.", false, "It's Fortran.");
+mc("In the C statement <code>int x = 1;</code> the value of x is bound at:", BIND5, "d", "For a local variable, the value is assigned when the statement executes (run time).");
+mc("Among the \"programming domains\" mentioned in class is:", ["Scientific applications","Business applications","Artificial intelligence","Systems programming","All of the above"], "e");
+mc("Programming language readability is adversely affected by the language:", ["Being simple","Supporting too many features","Having multiplicity of features (redundancy)","All of the above","Only b and c"], "e");
+tf("Heap-dynamic lifetime local variables are bound to memory cells before execution begins and remain bound until the program exits.", false, "That describes static variables.");
+tf("The lifetime of a variable is the time it is bound to a memory cell.", true);
+tf("One of the design motivations for Java was to do away with pointers even though Java is based on C++.", true);
+mc("Nestable statically scoped languages allow:", ["All the variables of any subprogram to be visible to all other subprograms","All variables defined at the same level of nesting to be visible to each other","All unmasked variables of a subprogram's static parents to be visible to it","None of the above"], "c");
+tf("\"Keywords\" and \"reserved words\" are just two different names for identical concepts.", false, "Keywords are special only in certain contexts; reserved words can never be used as names.");
+mc("A stack-dynamic-lifetime variable:", ["Is bound to storage before the program starts executing","Is bound to storage as its declaration statement is elaborated","Requires indirect addressing (like with BP)","Both a and c","Both b and c"], "e");
+tf("Syntax is the form or structure of the expressions, statements, and program units of a programming language.", true);
+mc("ANTLR rule: <code>idlist : idname (',' x)* ;</code>", ["The RHS is recursive","The part of the RHS in parentheses is optional","The part of the RHS in parentheses can be repeated","All of the above","Only b and c"], "e", "( )* means zero or more: optional and repeatable, but not recursive.");
+mc("ANTLR rule: <code>input : 'INPUT' inputlist ;</code>", ["'INPUT' is a terminal symbol","inputlist is a terminal symbol","input is a terminal symbol","All of the above","Both b and c"], "a");
+mc("The value 01010101 in decimal (base 10) is:", ["53","64","75","85","-44"], "d", "64 + 16 + 4 + 1 = 85");
+mc("The two's complement of 127 as an 8-bit number is:", ["10000001","10000000","11111111","None of the above"], "a", "127 = 01111111 → invert = 10000000 → +1 = 10000001");
+mc("A ____ specifies the types and size of variables and a ____ causes actual storage (memory) allocation.", ["Declaration, definition","Definition, declaration","Named constant, global variable"], "a");
+tf("Sign-magnitude signed numbers use the most significant bit as the sign.", true);
+tf("In FORTRAN, by implicit declaration any undeclared variable starting with I, J, K, L, M or N is integer by default.", true);
+tf("A grammar that generates a sentential form for which there are two or more distinct parse trees is said to be ambiguous.", true);
+mc("Which implementation method produces, in general, faster code?", ["Compilation","Interpretation","Hybrid (mixed compilation and interpretation)","None of the above"], "a");
+mc("BCD:", ["Stands for Binary Coded Decimal","Can encode two digits per byte","Is an oddity of COBOL","All of the above","Only a and b"], "e");
+mc("The Java enumeration type:", ["Implicitly subtypes the Java class Enum","Can have data members, constructors and methods","Can have floating point values","All of the above","Only a and b"], "e");
+mc("An array in which the subscript ranges are statically bound, but the allocation is done at declaration elaboration time during execution, is a:", ["Static array","Fixed stack-dynamic array","Stack-dynamic array","Heap-dynamic array"], "b");
+mc("A(n) ____ is an unordered collection of data elements that are indexed by an equal number of values called keys.", ["1-D array","Linked list","Stack","Associative array"], "d");
+mc("Using this code:" + CFUNC_X + "Given what we know about runtime stacks, which statement is FALSE?", ["d is on the stack when x executes if(a+b ...)","b is on the stack when x executes if(a+b ...)","c is on the stack when x executes if(a+b ...)","All the statements are false","None of the statements are false (all true)"], "c", "c is a block variable, created only when its block is entered.");
+mc("The only major compiled language that uses keywords rather than reserved words is:", ["COBOL","Ada","Java","C++","None of the above"], "e", "It's Fortran.");
+tf("The referencing environment of a statement is the collection of all names that are visible in the statement.", true);
+tf("In Java, all objects are heap-dynamic.", true);
+mc("In the Java statement <code>int x = 0;</code> the value of x is bound at:", BIND5, "d");
+mc("The binding of '=' to the semantics of variable assignment was done at:", BIND4, "a");
+mc("The type int was bound to x at:", BIND4, "b");
+mc("Static lifetime variables are bound to memory cells ____ execution begins and remain bound until ____.", ["Before, the declaring subroutine exits","Before, the program exits","During, the declaring subroutine exits","During, the program exits","None of the above"], "b");
+mc("In a BNF grammar, \"terminal\" symbols are:", ["Already reduced","Simply consumed as input","Needing to be reduced","Only a and b","Only b and c"], "d");
+tf("BNF is a way of describing a Context-Free Grammar (CFG).", true);
+tf("In <code>void SomeOp(int x){ int y; }</code> both x and y are stack-dynamic variables (Java or C++).", true);
+mc("In C++ and Java, the scope of all local variables in methods is:", ["From the beginning of the defining method to its end","The entire class that defines the method","From their declarations to the end of the defining method","From their declarations to the end of the defining block","None of the above"], "d");
+tf("Explicit heap-dynamic lifetime variables are created by programming directives such as new or malloc.", true);
+tf("A sentence is a string of characters over some alphabet.", true);
+mc("Java does not support which scope?", ["Global scope","Class scope","Method scope","Block scope","Package scope"], "a");
+mc("BNF means:", ["Binary Neutral Format","Big Number Form","Biggies-Fermat Form","Backus-Naur Form","None of the above"], "d");
+mc("<pre>&lt;expr&gt; → &lt;id&gt; + &lt;expr&gt;\n       | &lt;id&gt; * &lt;expr&gt;\n       | ( &lt;expr&gt; )\n       | &lt;id&gt;</pre>In the rule \"expr\" of the BNF grammar above:", ["Three of the rules in the RHS are recursive","The parentheses in the RHS are terminal symbols","To successfully complete this rule there must be at least one id","All of the above","Only a and c"], "d");
+mc("Which is a means of representing signed integers in a programming language?", ["Sign magnitude","One's complement","Two's complement","All of the above","Only a and b","Only b and c"], "d");
+mc("In programming languages from the 1980s and after, a primary influence on language design is:", ["The native architecture of some computer's hardware","Direct applicability to some application domain","Data abstraction","Object-oriented programming","All of the above"], "d");
+tf("+, *, ( and ) are terminal symbols in the grammar above (the &lt;expr&gt; grammar).", true);
+mc("Which language supports nesting of subroutines?", ["C++","Java","Ada","C#"], "c");
+mc("Which language still supports implicit declaration?", ["C++","COBOL","FORTRAN","Java"], "c");
+tf("The COBOLs, FORTRANs and Cs of the world are imperative languages.", true);
+mc("In the Java statement <code>double p = 1.5;</code> the value of p is bound at:", BIND5, "d");
+mc("The type double was bound to p at:", BIND4, "b");
+mc("The binding of the word double to a 64-bit floating point number type was done at:", BIND4, "a");
+mc("Stack-dynamic lifetime local variables are bound to memory cells ____ execution and remain bound until ____.", ["Before, the declaring subroutine exits","Before, the program exits","During, the declaring subroutine exits","During, the program exits"], "c");
+mc("The lifetime of a variable is:", ["The time it is bound to a memory cell","The span of program statements in which the variable is visible"], "a");
+mc("The scope of a variable is:", ["The time it is bound to a memory cell","The span of program statements in which the variable is visible"], "b");
+tf("Keywords differ from reserved words in that keywords can be used in a context which may be different from their intended meaning in the language.", true);
+tf("In a BNF grammar, terminals are symbols in a rule that are already reduced and non-terminals are symbols that need to be reduced, i.e. replaced.", true);
+mc("A static lifetime variable:", ["Is bound to storage before the program starts executing","Is bound to storage as its declaration statement is elaborated","Requires indirect addressing (like with BP)","Both a and c","Both b and c"], "a");
+tf("In <code>int main(){ int *p = new int; return 0; }</code> the variable pointed to by p is an explicit heap-dynamic lifetime variable.", true);
+mc("In <code>int main(){ int *p = new int; return 0; }</code> p is:", ["An explicit heap-dynamic lifetime variable","A stack-dynamic variable","A pointer to a value in the heap","Both a and c","Both b and c"], "e");
+tf("\"Blocks\" in C-based languages (C, C++, Java) are simply compound statements surrounded by { and } that create a nested scope inside another scope.", true);
+mc("In C, we declare an int*, assign it via malloc, then without deallocating, assign it another value from malloc. What did we create?", ["Stack overflow","A dangling pointer","A lost heap-dynamic variable","A target for automatic garbage collection"], "c");
+mc("A type in which each value has a predefined predecessor and successor:", ["Ordinal type","Ordered type","Inordinate type","Oriented type"], "a");
+tf("BCD is an old, short way of storing decimal (integer) numbers in COBOL.", true);
+tf("The sign-magnitude method for representing integers has two distinct representations of zero.", true);
+mc("____ has a single entry point.", ["Classes","Coroutines","Subprograms","COBOL records"], "c");
+mc("A possibly heterogeneous aggregate of data elements in which the individual elements are identified by names:", ["Union","Discriminator","Constrained variant","Record"], "d");
+mc("A type in which the variables have values that consist of memory addresses and nil:", ["Enumeration type","String type","Pointer type","Heap type"], "c");
+mc("Which is NOT a parameter passing technique?", ["Pass by value","Pass by alignment","Pass by result","Pass by value-result","Pass by reference"], "b");
+tf("In Pascal, array subscripts can be any ordinal type, including integer, character and Boolean.", true);
+mc("It has been demonstrated that all flowcharts can be drawn using only:", ["Count-controlled loops and switch (case) statements","Post-test loops and single-way selection","Pre-test loops and single-way selection","Pre-test loops and two-way selection","Two horses (provided the chart has wheels)"], "d", "Böhm–Jacopini: two-way selection plus logically controlled pretest loops.");
+mc("Which of the following is an Ada \"for\" loop?", ["DO 20 I = 1, 30, 5","FOR I = 1 TO 30 DO","for I in 1 .. 30 loop","for (i = 1; i <= 30; i++)"], "c");
+mc("An implicit type conversion (e.g. int to float) that occurs in an assignment, expression or parameter is called:", ["Crossover","Coercion","Type cast","Corruption"], "b");
+tf("In Ada, the \"for\" loop variable is undefined after the loop terminates.", true);
+tf("In C, a for loop's start, stop and step values may all be omitted.", true);
+tf("In C, pointer variables are implicitly dereferenced when passed as parameters.", false);
+tf("In C++, if a pointer is assigned to a dynamic variable and the dynamic variable is deallocated, a dangling pointer is created.", true);
+mc("Precedence and associativity rules can be overridden with:", ["Compiler directives","Operator overloading","Parentheses","Expression rearranging","Wishful thinking"], "c");
+tf("Enumeration types are implemented as integers.", true);
+tf("An array is an aggregate of non-homogeneous data elements in which an individual element is identified by its position relative to the first element.", false, "Arrays are homogeneous.");
+
+/* Matching: control statements */
+const ctrlMatch = [
+ ["provides a means of selecting among alternative control flow paths and causing repeated execution of certain collections of statements","b"],
+ ["control statement and the collection of statements whose execution it controls","c"],
+ ["allows a collection of statements to be abstracted to a single statement","a"],
+ ["provides the means of choosing between two or more execution paths in a program","g"],
+ ["has the general form → if – then – else","i"],
+ ["allows the selection of one of any number of statements or statement groups","f"],
+ ["C multiple selector construct","h"],
+ ["pretest logically controlled loop","j"],
+ ["posttest logically controlled loop","d"],
+ ["transfers execution to a specified place in the program","e"]];
+ctrlMatch.forEach(([d,a]) => mc("Match the best term: <i>" + d + "</i>", CTRL, a));
+
+/* Assembly */
+mc("What is the result of executing the following code?" + PROCP, ["The code terminates normally","The code causes the IP to become -1","The code causes the BP to become -1","The first local variable becomes -1","Both a and d"], "e");
+tf(ASM_ADD + "The instruction at line 4 pushes onto the stack what will become the value at [BP+4].", true, "Stack after line 9: [BP]=old BP, [BP+2]=return IP, [BP+4]=7, [BP+6]=5.");
+mc(ASM_ADD + "The instruction at line 8:", ["Saves the base pointer that was pointing to the last activation record before this call","Sets up a new activation record for this call","Serves as the basis for locating parameters and local variables in this call","All of the above"], "a", "Line 9 (mov bp, sp) is what sets up the new frame.");
+tf(ASM_ADD + "Execution of \"ret 4\" on line 14 causes the top of the stack to pop into IP and 4 to be added to SP.", true);
+mc(ASM_ADD + "What is at [BP+2] at instruction 12?", ["The IP before the call to add (return address)","The first parameter pushed","The previous value of BP","Unknown"], "a");
+tf(ASM_ADD + "A side effect of the instruction at line 12 is that it sets up the return value of the function.", true, "The sum ends up in AX, which is the return register.");
+mc(ASM_ADD + "The addressing mode of the instruction at line 10 is:", ["Register","Immediate","Direct","Displacement","Offset"], "d");
+mc(ASM_ADD + "The addressing mode of the instruction at line 12 is:", ["Register","Immediate","Direct","Displacement","Offset"], "a");
+mc(ASM_ADD + "What value is at [BP+8] at instruction 10?", ["The IP before the call to add","The first parameter pushed","The previous value of BP","Unknown"], "d");
+mc(ASM_ADD + "At the time instruction 12 is executed, the top of the stack is:", ["5","7","12","BP (the caller's saved BP)","Unknown"], "d");
+mc(ASM_ADD + "What value is at [BP+4] at instruction 10?", ["5","7","12","The BP","Unknown"], "b");
+tf(ASM_ADD + "The values at [BP+4] and [BP+6] are local variables of procedure add.", false, "They are parameters pushed by the caller (locals would be at negative offsets like [BP-2]).");
+mc(ASM_ADD + "The instruction at line 9:", ["Saves the return address of the caller","Saves the BP of the caller","Effectively creates an activation record instance (frame) for procedure add","None"], "c");
+tf(ASM_ADD + "The return value of procedure add is located in the AX register upon return.", true);
+mc(ASM_ADD + "Which is the correct C-like function prototype for procedure add?", ["int add()","void add(int, int)","int add(int, int)","int add(int)","None"], "c", "Two parameters, result returned in AX.");
+tf("Only the registers whose names end in X can be subdivided into two 8-bit registers.", true, "AX→AH/AL, BX, CX, DX.");
+tf("A word of memory on the 8086 is 4 bytes (32 bits) long.", false, "A word is 2 bytes (16 bits).");
+tf("In an assembly program, whether an integer variable is signed or unsigned must be decided when the variable is declared.", false, "The instructions used (e.g. IMUL vs MUL) decide it.");
+mc("The Intel 8086 has an address bus that:", ["Is 20 bits wide","Can address 1 MB of memory only","Is 16 bits wide","Both a and b","Both b and c"], "d");
+tf("Functions are subprograms that can return a value via their name (i.e. x = f();).", true);
+mc("<code>if (sum == 0) if (count == 0) result = 0; else result = 1;</code><br>In the statement above:", ["The else pairs with the first if","The else pairs with the second if","The pairing of the else results from a semantic rule, not a syntactic rule","Both a and c","Both b and c"], "e");
+mc(ARITH_IF + "The statement on line 1 is called a(n):", ["Assigned IF","Arithmetic IF","Computed GOTO","Compound GOTO"], "b");
+tf(ARITH_IF + "If the value of I in line 1 is 4, flow of control goes to line 2 next.", false, "I > 0 → goes to label 30.");
+tf(ARITH_IF + "If the value of I in line 1 is 1, flow of control goes to line 5 next.", false, "I > 0 → goes to label 30 (line 7).");
+mc("Which is a basic level of program control?", ["Within expressions","Among program units (calls)","Among statements (sequence, selection, iteration)","All of the above"], "d");
+mc("A characteristic of the C switch statement is:", ["No implicit branch at the end of each case code segment","The switch expression can be double or float","There is no default segment for unrepresented values","All of the above","None of the above"], "a");
+mc("And, or and not are ____ operations.", ["Relational","Boolean","Conditional","None of the above"], "b");
+tf("Operator associativity is concerned with the precedence of operators during expression evaluation, such as * being done before +.", false, "That's precedence, not associativity.");
+mc(FUNC1 + "<br>What is sum if operands are evaluated left to right?", ["35","37","36","41","None of the above"], "b", "func1 returns 30 and i becomes 15; 30 + 15/2 = 30 + 7 = 37.");
+mc(FUNC1 + "<br>What is sum if operands are evaluated right to left?", ["35","37","36","41","None of the above"], "a", "i/2 = 5 first, then func1 returns 30; 5 + 30 = 35.");
+mc("A ____ provides a means of selecting among alternative control flow paths and causing repeated execution of certain collections of statements.", ["Compound statement","Control statement","Control structure","Multiple selection statement"], "b");
+mc("A ____ statement has the general form → if – then – else.", ["Single-way selection","Multiple selection","Two-way selection","Control"], "c");
+tf("A goto in C or C++ is an unconditional branch that requires a label target.", true);
+mc(COMP_GOTO + "The GOTO statement with the label list is called a(n):", ["Assigned IF","Arithmetic IF","Computed GOTO","Compound GOTO"], "c");
+mc(COMP_GOTO + "As written, GOTO (15, 30, 45, 60) M*15 transfers control to:", ["Line labeled 15","Line labeled 30","Line labeled 45","Line labeled 60","The GOTO 100 immediately following it"], "e", "M*15 = 30, which is out of range 1–4, so execution falls through to the next statement.");
+mc(COMP_GOTO + "If M*15 is changed to just M (M = 2), the computed GOTO transfers control to:", ["Line labeled 15","Line labeled 30","Line labeled 45","Line labeled 60","The GOTO 100 immediately following it"], "b", "Index 2 selects the 2nd label: 30.");
+mc("A unary + operator:", ["Is called the identity operator","Flips the sign of its operand","Has no effect on its operand","Both a and b","Both a and c"], "e");
+tf("One way to prevent functional side effects is to not allow two-way parameters.", true);
+mc("A relational operator:", ["Is also known as a Boolean operator","Is used to compare the values of its two operands","Has a higher precedence than arithmetic operators","All of the above","Only a and b"], "b");
+mc("Assuming short-circuit evaluation applies to <code>while ((b &lt; 10) || ((b++) &lt; 10));</code> with b = 1, the result of || will be:", ["True until b = 10","Always true","Never true","False until b = 10"], "b", "b < 10 is true, so b++ is never evaluated and b never changes.");
+mc(FUN + "<br>What is sum if operands are evaluated left to right?", ["41","48","51","46","None of the above"], "b", "fun returns 41 and i becomes 14; 41 + 7 = 48.");
+mc(FUN + "<br>What is sum if operands are evaluated right to left?", ["41","51","46","48","None of the above"], "c", "i/2 = 5 first; 5 + 41 = 46.");
+mc("In C-based languages the assignment operator:", ["Is treated as an arithmetic binary operator","Produces a result that can be evaluated","Has the lowest precedence except for && and ||","All of the above","Loves moonlit walks on the beach"], "b", "Assignment is an expression that yields a value. (Its precedence is lower than && and ||.)");
+tf("A \"grammar\" is a BNF description or collection of rules describing a language.", true);
+tf("For a programming language to be \"reliable\" it must do type checking.", true);
+tf("An example of a language design trade-off is reliability versus cost of execution.", true);
+tf("In early programming languages, a major influence on language design was the target computer's hardware processor.", true);
+mc("Fortran I:", ["Was the first business programming language","Had user-defined subroutines","Supported advanced abstract data types such as records","All of the above","None of the above"], "e");
+tf("In LISP, the CAR instruction returns the first element of a list.", true);
+mc("Most modern imperative languages are based on features originally in:", ["COBOL","ALGOL 60","BASIC","C","PL/I"], "b");
+tf("Generic methods (templates) in C++ may have primitives (int, char, etc.) as their type variable.", true);
+tf("Generic methods in Java may have primitives (int, char, etc.) as their type variable.", false, "Java generics require reference types.");
+tf("C-based programming languages must have a static chain in the activation record for subroutine calls.", false, "C has no nested functions, so no static chain is needed.");
+tf("Pass-by-reference provides the access path to the cell storing the actual parameter.", true);
+tf("In the C statement for(expr; expr; expr), if the middle expression is absent the result is an infinite loop.", true);
+mc("In <code>if (!(A || B || C))</code> with short-circuit evaluation and A = true, B = true, C = false, the result of the if expression is known:", ["After evaluating A","After evaluating B","After evaluating C","After the ! is evaluated","None"], "a");
+mc("The most common way to implement static scoping in languages that allow nested subprograms is:", ["Static chaining","Dynamic chaining","Recursion","None of the above"], "a");
+tf("Explicit type conversion is often called casting.", true);
+tf("The collection of dynamic links in the runtime stack at a given time is called the dynamic chain, or call chain.", true);
+mc("In MS-DOS assembler, the dynamic link is:", ["Non-existent","Just the value of the BP pushed onto the stack","The return address of the caller"], "b");
+tf("The activation record instances of all of the static ancestors must be on the stack when variables in them are referenced by nested subprograms.", true);
+mc("Variables defined in a C \"block\" are:", ["Created when the enclosing function is called","On the stack just like parameters and local variables of the function","Created when the block is entered","All of the above","Only b and c"], "e");
+mc("Which language does not support functional recursion?", ["Ada 83","C-89","FORTRAN 77","Ruby"], "c");
+mc(FIB + "Without INTEGER on line 2, would the compiler assume S is a REAL variable?", ["True","False"], "a", "S is not in I–N, so implicit typing makes it REAL.");
+mc(FIB + "The DO in line 6:", ["Is a count-controlled loop statement","Is an event-controlled loop statement","Creates a block of statements between it and line 8","Both a and c","Both b and c"], "d");
+mc(FIB + "In line 7, F(S-2) is:", ["An illegal reference because S-2 is negative","A call to function F with S-2 as its argument","A legal reference because S starts at 3","None"], "c");
+tf(FIB + "The code in line 7 contains two recursive calls.", false, "F is an array; these are array references.");
+mc("In languages that support nested subprograms, a nested subprogram may access:", ["Only its parameters and local variables","Its parameters, local variables, and those of its dynamically scoped ancestors","Its parameters, local variables, and those of its statically scoped ancestors","Its parameters, local variables, and those at the same nesting depth"], "c");
+mc("The number, order and type of a subprogram's parameters define its:", ["Subprogram header","Parameter profile","Protocol"], "b");
+tf("Procedures are subprograms that cannot return a value via their name (i.e. x = f();).", true);
+tf("A subprogram declaration provides the protocol of a subprogram, but no body.", true);
+mc("In Java, ____ primitive parameters are passed by ____.", ["Some, reference","Some, keyword","All, reference","All, value","None"], "d");
+tf("While COBOL has no explicit record (ADT) declaration, it is possible to construct hierarchical data abstractions using level numbers such as 01, 05, 10.", true);
+tf("It is possible for an ADT to provide encapsulation but no information hiding.", true);
+mc("In Ada, the encapsulation construct:", ["Is called a package","Provides information hiding","Has an interface and an implementation","All of the above","Only a and b"], "d");
+tf("Constructors in OO languages such as C++ and Java actually allocate memory for the object instance they are creating.", false, "Constructors initialize; allocation is done by new or the runtime.");
+mc("C++ destructors:", ["Are implicitly called when the lifetime of their class instance ends","Can be called explicitly","Are often used to deallocate heap-dynamic data owned by the instance","Are named ~classname","Every one of the above"], "e");
+tf("All Java class instances (objects) are allocated from the heap and accessed through reference variables.", true);
+mc("Which of the following are invalid C++ class declarations, assuming MyClass exists?<br><code>static MyClass smc;</code> / <code>MyClass mc;</code> / <code>MyClass *pmc = new MyClass();</code>", ["static MyClass smc;","MyClass mc;","MyClass *pmc = new MyClass();","All","None"], "e");
+tf("In Ruby, all data members (instance variables) of a class are private and cannot be otherwise.", true);
+
+/* Matching: grammar terms */
+[["derivation","d"],["grammar","c"],["metalanguage","j"],["nonterminals","b"],["parse tree","h"],["parsing","g"],["semantics","e"],["sentential form","i"],["syntax","f"],["terminals","a"]]
+ .forEach(([t,a]) => mc("Match the best definition for: <b>" + t + "</b>", GRAM, a));
+
+mc("C++ is ____ of C.", ["A superset","A subset","A derivative","The illegitimate child"], "a", "Nearly a superset.");
+mc("Tokens of a programming language are typically recognized by:", ["Regular grammars","Context-free grammars"], "a", "Lexical analyzers use regular grammars/finite automata; parsers use CFGs.");
+mc("COBOL was:", ["Designed primarily by Grace Hopper","Meant to be a business programming language","The first language to have local variables for subroutines","All","Only a and b"], "e");
+mc("Lisp cons structures:", ["Have two cells","Are used to construct lists","May point to sublists in the list","All","Only a and b"], "d");
+tf("Simula 67 had a data structure called a \"class\".", true);
+mc("In C++:", ["All bindings of messages to methods are dynamic","All subclasses are subtypes (nothing can be hidden)","All inheritance is implementation inheritance","All of the above","None of the above"], "c", "Instructor's corrected key marks c.");
+mc("BASIC:", ["Was designed to teach programming concepts to non-programmers","Was interpreted, not compiled","Was used a lot in early home computers","All"], "d");
+tf("In Pascal programs, all variable declarations must be placed ahead of any code for the defining block.", true);
+mc("PHP:", ["Is a server-side scripting engine","Replaces PHP code with HTML generated by the PHP code","Can work in conjunction with an SQL database","All"], "d");
+mc("<pre>qualifiedNameList : type (',' qualifiedName)* ;</pre>In the rule qualifiedNameList:", ["The RHS is recursive","The part of the RHS in parentheses is optional","The part of the RHS in parentheses can be repeated","All","Only a and b"], "d", "Course key: repetition counts as (EBNF-style) recursion. Strictly, only b and c are true.");
+mc("<pre>typeArgument : type\n             | '?' (('extends' | 'super') type)? ;</pre>In the rule typeArgument:", ["The RHS has two possible outcomes and one must be picked","The RHS starting with '?' may select either extends or super","Whether the rule has extends or super is optional","All","Only b and c"], "d");
+mc("In MASM, parameter passing is accomplished by:", ["The caller pushing actual parameters on the stack","The called function pushing parameters on the stack","The caller loading actual parameters into registers like AX","All"], "a");
+tf("MASM programs typically have three segments: code, data and stack.", true);
+tf("The MUL and IMUL instructions produce a product twice the size of the multiplier used by the instructions.", true);
+tf("In Java, all concurrent tasks have the same name, run().", true);
+tf("Heavyweight tasks all run in their own address space.", true);
+tf("C++ destructors are implicitly called when the lifetime of their class instance ends.", true);
+tf("The only major language that processes arrays in column-major order is Ada.", false, "It's Fortran.");
+mc("Runtime stacks make possible:", ["Recursion","Unique sets of parameters per subroutine activation","Unique sets of local variables per subroutine activation","All of the above"], "d");
+
+/* ---- Extra set ---- */
+mc("The binding of the word double to a 64-bit floating point number type was done at:", ["Language design time","Language implementation time","Compile time","Load time","Run time"], "a");
+tf(MASM_DECL + "<code>MOV CL, BL</code> — This is a legal instruction.", true);
+tf(MASM_DECL + "<code>MOV AL, Var2</code> — This is a legal instruction.", false, "AL is 8-bit but Var2 is a word (DW), so the sizes don't match.");
+tf(MASM_DECL + "<code>MOV Var1, AL</code> — This is a legal instruction.", true);
+tf(MASM_DECL + "<code>MOV DL, 0</code> — This is a legal instruction.", true);
+tf(MASM_DECL + "<code>SUB Var2, Var2</code> — This is a legal instruction.", false, "Memory-to-memory operations are not allowed.");
+mc("<pre>PUSH AX\nPUSH BX\nCALL FUNC1</pre>Before PUSH AX, SP = 1000. Per the course's answer choices, what is SP at FUNC1's first instruction?", ["1000","1004","1006","1008","1010"], "c", "Three words (2 bytes each) = 6 bytes. On a real 8086 the stack grows down, so SP would be 994.");
+mc("<pre>PUSH AX\nPUSH BX\nCALL FUNC1</pre>SP = 1000 at the start. What is SP after FUNC1 completes normally (FUNC1 removes the parameters)?", ["1000","1004","1006","1008","1010"], "a");
+tf("Data types such as integer, floating point and single character provided by a language are known as built-in or primitive types.", true);
+tf("A variable's type determines the range of values the variable can store and the set of operations defined for those values.", true);
+
+/* ---- Test 1 2018 ---- */
+tf("Among the reasons to study programming languages is that it helps us understand the significance of implementation and how a language is more or less efficient for certain applications.", true);
+mc("Programming language readability is adversely affected by the language:", ["Lack of control structures","Supporting too many features","Having multiplicity of features (redundancy)","All of the above","Only b and c"], "d");
+tf("A factor that drives up the cost of developing a new language is how much training is required to make programmers efficient in it.", true);
+tf("An example of a potential language design trade-off is writability vs flexibility.", false, "The classic trade-offs are reliability vs cost of execution, readability vs writability, and writability (flexibility) vs reliability.");
+mc("COBOL:", ["Was the first purpose-designed business programming language","Had user-defined subroutines (without parameters)","Supported simple abstract data types such as records","All of the above","None of the above"], "d");
+tf("LISP is an acronym for List Processor.", true);
+mc("Compiled code execution versus interpreted code:", ["Is always slower","Is always faster","Is about the same","Depends on the hardware"], "b", "Compiled code is generally faster.");
+mc("Which groundbreaking language had packages, exception handling, generic program units and concurrency?", ["Pascal","C","Ada","FORTRAN 77"], "c");
+tf("C++ evolved out of C and Simula 67.", true);
+mc("Register-to-register transfers in MASM are called ____ addressing mode.", ["Immediate","Indirect","Direct","Register","Offset"], "d");
+mc("The functions our assembler programs call to do screen I/O are:", ["Part of DOS","Part of MASM","Called by invoking an interrupt in our program","All of the above","Only a and c"], "e");
+tf("Absolute addresses for code in assembler are a combination of the CS register and the IP.", true);
+
+/* ---- Subprograms / OO / Concurrency ---- */
+mc("Which language does not have nested subprogram capabilities?", ["Ada","Java","JavaScript","Ruby","Pascal"], "b");
+tf("Subprogram call and return operations of a language are together called its subprogram linkage.", true);
+mc("A ____ is specified in C-based languages as a compound statement that begins with one or more data definitions.", ["Subprogram","Function","Method","Block"], "d");
+tf("Recursion is only possible in languages that use runtime stacks.", true);
+mc("Which of the following are in an activation record instance?", ["Parameters","Return address","Local variables","Dynamic link","All of the above"], "e");
+tf("In stack-based language implementations, every subprogram activation, recursive or not, creates a new activation record instance on the stack.", true);
+mc("SIMULA 67 supported which of the following OO concepts?", ["Inheritance","Virtual subroutines","Classes","All of the above","None, as SIMULA 67 predated OO"], "d");
+tf("Since calls to methods are sometimes called messages, it is true to say that message passing is different than calling a subroutine.", false, "Message passing is essentially the same as a subprogram call.");
+mc("A class variable:", ["Is limited to one per class","Is one per instance of the class","Is the variable created with \"new\"","None of the above"], "a");
+tf("Multiple inheritance is when the parent of a class has a parent.", false, "Multiple inheritance means a class has more than one parent.");
+mc("When method calls are statically coded but the receiving objects are determined at runtime, we call this:", ["Static binding","Dynamic binding","Coroutines","None of the above"], "b");
+tf("Dynamic binding (of messages to methods) is sometimes called polymorphism.", true);
+mc("A language where everything in it is an object is:", ["Ruby","C++","Ada 95","Java","None of the above"], "a");
+mc("A language where objects were added to complete a traditional typing system is:", ["Ruby","C++","Ada 95","Java","None of the above"], "b");
+mc("A language that uses imperative-style primitive types but everything else is objects is:", ["Ruby","C++","Ada 95","Java","None of the above"], "d");
+tf("Subclasses of a class are by definition subtypes of that parent class.", false);
+tf("The problem of object slicing can occur in stack-allocated objects.", true);
+tf("The main reason to allow nested classes in an OO language is to allow information hidden in one class to be visible to another (nested) class.", true);
+mc("Java supports inner classes that:", ["Can be named and typed","Can be anonymous and typed","Can be anonymous and un-typed","Both a and b","Both b and c"], "d");
+mc("In Smalltalk:", ["All binding of messages to methods is dynamic","All subclasses are subtypes (nothing can be hidden)","All inheritance is implementation inheritance","All of the above","None of the above"], "d");
+tf("In C++, \"private\" derivation means inherited public and protected members are private in the derived class.", true);
+tf("In C++, stack-dynamic instances of classes cannot be dynamically bound even if there are virtual methods in the parent class.", true);
+mc("In C++, a class that has at least one pure virtual function:", ["Is an abstract class","Cannot be instantiated","Can have non-abstract method implementations","All of the above","Only a and b"], "d");
+mc("In Java, a class may:", ["Extend only one class","Implement only one interface","Extend multiple classes","Implement multiple interfaces","Both a and d"], "e");
+tf("A final class in Java cannot be inherited.", true);
+mc("In Ada 95, a private class is defined by:", ["class Name is private","type Name is private","class Name is tagged private","type Name is tagged private"], "d");
+tf("Derived classes in Ada 95 are always subtypes of their parent classes.", true);
+mc("In OO languages that have constructors, the constructor:", ["Allocates memory for the object","Assigns the reference or pointer the address of the object in the heap","Initializes data members of the object instance","All of the above"], "c");
+tf("Concurrency characterizes any system in which two or more tasks may be underway (at an unpredictable point in their execution) at the same time.", true);
+mc("A concurrent algorithm is ____ if the speed of its execution increases when more processors are available.", ["Concurrent","Parallel","Scalable","Persistent"], "c");
+mc("____ is a mechanism that controls the order in which tasks execute.", ["Rendezvous","Parallelism","Synchronization","Threading"], "c");
+tf("A task is different from a subprogram in that the invoking unit need not wait for the task to finish before continuing.", true);
+tf("In Java, certain methods that serve as tasks are executed in objects called threads.", true);
+tf("Lightweight tasks all run in their own address space.", false, "Lightweight tasks share one address space.");
+tf("In cooperation synchronization, Task A must wait for Task B to complete some specific activity before Task A can continue.", true);
+tf("In competition synchronization, Task A must wait for Task B to complete some specific activity before Task A can continue.", false, "That's cooperation synchronization; competition is about a shared resource.");
+tf("Mutual exclusion treats a resource as something that a task can possess.", true);
+tf("When two tasks are each waiting for the other to release a resource it needs, the situation is called deadlock.", true);
+tf("A monitor is a data structure consisting of a counter and a queue for storing task descriptors.", false, "That describes a semaphore.");
+tf("In Ada, concurrent code is marked by an accept clause.", false, "Concurrent units are tasks; accept clauses mark rendezvous points.");
+tf("In Java, a call to unlock (on a Lock object) is placed in a finally clause to guarantee the lock is released.", true);
+
+/* ---- Final set ---- */
+mc("<code>(setq names '(Sean Matt Sophie))</code>", ["Is LISP","Sets a list named names to the numbers in Sean, Matt and Sophie","Sets a list named names to the strings Sean, Matt and Sophie","Both a and b","Both a and c"], "a", "The elements are symbols, not numbers or strings.");
+mc("An int array's base address is 1004, it has 100 elements, and an int is 4 bytes. What is the exact address of element 40?", ["1044","1144","1164","None of the above"], "c", "1004 + 40 × 4 = 1164");
+tf("The sign-magnitude value of -15 in bits is 1000 1111.", true);
+tf("In Java, a concurrent task must be passed into a Thread object to be run, or derived from Thread.", true);
+tf("The two's complement of 00110101 is 11001110.", false, "Invert = 11001010, +1 = 11001011.");
+mc("A ____ is a subprogram that has multiple entry points and controls them itself.", ["Procedure","Function","Method","Coroutine"], "d");
+tf("In both C++ and Java, arrays are objects, and the array's length is passed as a parameter along with the data elements.", false, "C++ arrays are not objects.");
+tf("The FORTRAN arithmetic IF statement has three targets: one each for a negative, zero or positive expression.", true);
+mc("____ is compilation of some units of a program separately from the rest, without the benefit of interface information.", ["Standalone compilation","Separate compilation","Independent compilation","All of the above","None of the above"], "c");
+tf("A widening conversion is one in which an object is converted to a type that can include at least approximations to all of the values of the original type.", true);
+mc("Which language does not allow mixed-mode assignment?", ["Ada","C++","Fortran","Java"], "a");
+tf("The parameter passing scheme pass-by-result is also known as in-out mode parameter passing.", false, "Pass-by-result is out mode; pass-by-value-result is in-out.");
+mc("Destructors in C++ can be used to:", ["Initialize class members","Release dynamically created data within the class","Report on debugging or class usage","All of the above","Both b and c"], "e");
+mc("In typical pass-by-value parameter passing schemes:", ["The actual values share memory with the formal parameters","The actual values are copied onto a runtime stack and accessed by the subroutine","The actual values are copied onto a runtime stack and shared with the subroutine","The actual values are copied to a special shared location"], "b");
+tf("COBOL was the first major language to allow data abstraction via records.", true);
+mc("Pass-by-reference parameter passing is accomplished by:", ["Copying the actual parameter's value to the runtime stack","Placing the value into a shared memory location","Putting the actual parameter's address onto the runtime stack so the subroutine can access it directly","None of the above"], "c");
+mc("Which language has static chains?", ["Ada","C++","Java","Fortran"], "a");
+mc("Which of the following are NOT in an activation record instance?", ["Parameters","Local variables","Static variables","Dynamic link"], "c");
+tf("In Java, all parameters are pass-by-value, but objects are in effect pass-by-reference.", true);
+tf("<code>public static &lt;T&gt; void print(T[] a)</code> defines a generic Java method called print that accepts an array of any class type.", true);
+mc("The correct time for binding a data type to a reserved word is:", ["Design time","Implementation time","Compile time","Load time","Run time"], "a");
+mc("A ____ is a variable that is bound to a value only once.", ["Named constant","Static variable","Global variable","Dynamic variable"], "a");
+mc("Which is a valid level of control in a procedural programming language?", ["Iterative (among statements)","Selective (among statements)","Within expressions","Sequential (among statements)","All of the above","b, c, d"], "e");
+tf("In Java, <code>while (x &lt; 10) {...}</code> is an example of an event-controlled loop.", true);
+mc("In the C++ statement <code>double rate = 3.5;</code> the value of rate is bound at:", ["Run time","Compile time","Load time","Cannot be determined from the statement","Language design time"], "d", "It depends on whether rate is global/static or local.");
+mc("The encapsulation mechanism for object-oriented languages is:", ["The class","The access delimiters public, protected and private","The namespace","The package","None of the above"], "a");
+tf("Ruby classes can dynamically remove or undefine their methods.", true);
+
+/* ===================== QUIZ ENGINE ===================== */
+const NUM_ORDERS = 6;
+function rng(seed){ return function(){ seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function orderFor(n){ const idx = Q.map((_, i) => i); const r = rng(n * 9973 + 17); for (let i = idx.length - 1; i > 0; i--){ const j = Math.floor(r() * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]]; } return idx; }
+
+let state = null;
+const $ = id => document.getElementById(id);
+const key = n => "apl524_order_" + n;
+function save(){ localStorage.setItem(key(state.n), JSON.stringify({pos: state.pos, score: state.score, missed: state.missed})); }
+
+function showMenu(){
+  $("quiz").classList.add("hidden"); $("results").classList.add("hidden"); $("menu").classList.remove("hidden");
+  const box = $("orders"); box.innerHTML = "";
+  for (let n = 1; n <= NUM_ORDERS; n++){
+    const s = JSON.parse(localStorage.getItem(key(n)) || "null");
+    const b = document.createElement("button"); b.className = "order-btn";
+    const status = s && s.pos > 0 ? (s.pos >= Q.length ? "Completed – " + s.score + "/" + Q.length : "Resume at Q" + (s.pos + 1)) : "Not started";
+    b.innerHTML = "<b>Order " + n + "</b><small>" + status + "</small>";
+    b.onclick = () => start(n);
+    box.appendChild(b);
+  }
+}
+
+function start(n){
+  const s = JSON.parse(localStorage.getItem(key(n)) || "null");
+  state = {n, order: orderFor(n), pos: 0, score: 0, missed: []};
+  if (s && s.pos < Q.length){ Object.assign(state, s); }
+  $("menu").classList.add("hidden"); $("results").classList.add("hidden"); $("quiz").classList.remove("hidden");
+  render();
+}
+
+function restart(){ localStorage.removeItem(key(state.n)); start(state.n); }
+
+function render(){
+  if (state.pos >= Q.length) return finish();
+  const q = Q[state.order[state.pos]];
+  $("progress").textContent = "Order " + state.n + " · Question " + (state.pos + 1) + " / " + Q.length;
+  $("score").textContent = "Score: " + state.score;
+  $("barfill").style.width = (state.pos / Q.length * 100) + "%";
+  $("qtext").innerHTML = q.q;
+  $("fb").className = "fb"; $("fb").innerHTML = "";
+  $("nextBtn").classList.add("hidden");
+  const box = $("opts"); box.innerHTML = "";
+  q.o.forEach((text, i) => {
+    const b = document.createElement("button"); b.className = "opt";
+    const l = document.createElement("span"); l.className = "l"; l.textContent = L[i] + ".";
+    b.appendChild(l); b.appendChild(document.createTextNode(" " + text));
+    b.onclick = () => answer(i);
+    box.appendChild(b);
+  });
+  window.scrollTo({top: 0, behavior: "smooth"});
+}
+
+function answer(i){
+  const q = Q[state.order[state.pos]];
+  const btns = [...$("opts").children];
+  btns.forEach(b => b.disabled = true);
+  const fb = $("fb");
+  if (i === q.a){
+    btns[i].classList.add("correct");
+    state.score++;
+    fb.className = "fb good"; fb.innerHTML = "✅ Correct!" + (q.e ? " <span style='color:var(--muted)'>" + q.e + "</span>" : "");
+    state.pos++; save();
+    setTimeout(render, q.e ? 1400 : 700);
+  } else {
+    btns[i].classList.add("wrong"); btns[q.a].classList.add("correct");
+    fb.className = "fb bad";
+    fb.innerHTML = "❌ Not quite. Correct answer: <b>" + L[q.a] + ". " + escapeHTML(q.o[q.a]) + "</b>" + (q.e ? "<br><span style='color:var(--muted)'>" + q.e + "</span>" : "");
+    state.missed.push(state.order[state.pos]);
+    state.pos++; save();
+    $("nextBtn").classList.remove("hidden");
+  }
+}
+
+function next(){ render(); }
+function escapeHTML(s){ return s.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+
+function finish(){
+  $("quiz").classList.add("hidden"); $("results").classList.remove("hidden");
+  const pct = Math.round(state.score / Q.length * 100);
+  $("final").textContent = "Order " + state.n + ": you scored " + state.score + " / " + Q.length + " (" + pct + "%).";
+  const m = $("missed");
+  m.innerHTML = state.missed.length ? "<h3>Questions you missed</h3>" : "<p>Perfect run! 🎉</p>";
+  state.missed.forEach(qi => {
+    const q = Q[qi]; const d = document.createElement("div");
+    d.innerHTML = q.q + "<br><b style='color:var(--good)'>Answer: " + L[q.a] + ". " + escapeHTML(q.o[q.a]) + "</b>";
+    m.appendChild(d);
+  });
+}
+
+$("subtitle").textContent = Q.length + " questions · 6 random orders · progress is saved in your browser";
+document.addEventListener("keydown", e => {
+  if ($("quiz").classList.contains("hidden")) return;
+  if (e.key === "Enter" && !$("nextBtn").classList.contains("hidden")) return next();
+  const i = L.indexOf(e.key.toLowerCase());
+  const btns = [...$("opts").children];
+  if (i >= 0 && i < btns.length && !btns[i].disabled) answer(i);
+});
+showMenu();
+</script>
+</body>
+</html>
