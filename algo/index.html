@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CECS 528 Algorithms – Practice Quiz</title>
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--muted:#94a3b8;--accent:#38bdf8;--good:#22c55e;--bad:#ef4444;--border:#334155}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+  .wrap{max-width:780px;margin:0 auto;padding:24px 16px 60px}
+  h1{font-size:1.6rem;margin:0 0 4px}
+  .sub{color:var(--muted);margin:0 0 24px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+  button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--border);background:#0b1222;color:var(--text);padding:12px 14px;text-align:left;transition:.15s}
+  button:hover:not(:disabled){border-color:var(--accent)}
+  button:disabled{cursor:default}
+  .order-btn{text-align:center;padding:18px}
+  .order-btn b{display:block;font-size:1.15rem}
+  .order-btn small{color:var(--muted)}
+  .top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;color:var(--muted);font-size:.9rem}
+  .bar{height:6px;background:var(--border);border-radius:99px;overflow:hidden;margin-bottom:18px}
+  .bar div{height:100%;background:var(--accent);width:0;transition:width .3s}
+  .q{font-size:1.1rem;margin:0 0 16px}
+  .q pre{background:#0b1222;border:1px solid var(--border);border-radius:8px;padding:10px 12px;overflow-x:auto;font-size:.85rem;line-height:1.35}
+  .opts{display:flex;flex-direction:column;gap:8px}
+  .opt .l{display:inline-block;min-width:26px;font-weight:700;color:var(--accent)}
+  .opt.correct{border-color:var(--good);background:rgba(34,197,94,.15)}
+  .opt.wrong{border-color:var(--bad);background:rgba(239,68,68,.15)}
+  .fb{margin-top:16px;padding:12px 14px;border-radius:10px;display:none}
+  .fb.good{display:block;background:rgba(34,197,94,.12);border:1px solid var(--good)}
+  .fb.bad{display:block;background:rgba(239,68,68,.12);border:1px solid var(--bad)}
+  .actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+  .primary{background:var(--accent);color:#0f172a;border:none;font-weight:700;text-align:center}
+  .link{background:none;border:none;color:var(--muted);padding:6px 0;text-decoration:underline}
+  .missed{margin-top:18px}
+  .missed div{border-top:1px solid var(--border);padding:10px 0;font-size:.92rem}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>CECS 528 Algorithms – Practice Quiz</h1>
+  <p class="sub" id="subtitle"></p>
+
+  <!-- MENU -->
+  <div id="menu" class="card">
+    <p style="margin-top:0">Pick a question order. Each order is a fixed shuffle, so you can come back to the same one.</p>
+    <div class="grid" id="orders"></div>
+  </div>
+
+  <!-- QUIZ -->
+  <div id="quiz" class="card hidden">
+    <div class="top">
+      <span id="progress"></span>
+      <span id="score"></span>
+      <button class="link" onclick="showMenu()">← Menu</button>
+    </div>
+    <div class="bar"><div id="barfill"></div></div>
+    <div class="q" id="qtext"></div>
+    <div class="opts" id="opts"></div>
+    <div class="fb" id="fb"></div>
+    <div class="actions"><button class="primary hidden" id="nextBtn" onclick="next()">Next →</button></div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results" class="card hidden">
+    <h2 style="margin-top:0">Done!</h2>
+    <p id="final"></p>
+    <div class="actions">
+      <button class="primary" onclick="restart()">Retry this order</button>
+      <button onclick="showMenu()">Back to menu</button>
+    </div>
+    <div class="missed" id="missed"></div>
+  </div>
+</div>
+
+<script>
+/* ===================== QUESTION BANK ===================== */
+const Q = [];
+const L = "abcdefghij";
+function tf(q, ans, e){ Q.push({q, o:["True","False"], a: ans ? 0 : 1, e}); }
+function mc(q, o, ans, e){ Q.push({q, o, a: L.indexOf(ans), e}); }
+const FIX = "<b style='color:#fbbf24'>Corrected from the PDF.</b> ";
+
+/* ---- Graphs, trees, misc (PDF notes section) ---- */
+mc("If G is a connected undirected simple graph, which of the following can never disconnect G upon its removal?", ["An articulation point","A bridge","An edge that is part of a cycle","All of the above"], "c", "Removing an edge on a cycle leaves the rest of the cycle as an alternate route.");
+mc("If a and b are vertices in a connected graph of order n, the length of the longest simple path can be at most:", ["n","n − 1","n/2","n(n−1)/2"], "b", "A simple path visits at most n vertices, so it has at most n − 1 edges.");
+mc("Which of the following algorithms has an implementation that most closely resembles that of Dijkstra's algorithm?", ["Kruskal's","Prim's","Huffman's","Floyd-Warshall"], "b", "Both grow one tree from a start vertex using a priority queue of vertex keys.");
+mc("Inserting keys 10, 20, 25, 18, 15, 12 (in that order) into an initially empty BST. How many branches (root-to-leaf paths) does the tree have?", ["1","2","3","4"], "b", "Leaves are 25 and 12: 10→20→25 and 10→20→18→15→12.");
+mc("The running time of the 0-1 Knapsack dynamic-programming algorithm, measured against input size, has growth that is:", ["Linear","Polynomial","Exponential (pseudo-polynomial: O(nW))","Logarithmic"], "c", "O(nW) is polynomial in the value W but exponential in the number of bits needed to write W.");
+mc("Which of the following recurrences can NOT be solved by the (basic) Master Theorem?", ["T(n) = 16T(n/4) + n","T(n) = T(n/5) + 20","T(n) = 3T(n/4) + n log n","T(n) = 2T(n/2) + n log n"], "d", "n log n is bigger than n^(log₂2) = n, but not polynomially bigger, so it falls in the gap between cases 2 and 3.");
+mc("All of the following algorithms make use of depth-first spanning trees, except for:", ["Finding strongly connected components","Finding articulation points","Finding bridges","All of the above make use of depth-first spanning trees"], "d");
+mc("Which algorithm does NOT need depth-first search?", ["Strongly connected components","Kruskal's algorithm","Articulation points","None of the above"], "b", "Kruskal's uses sorting plus a disjoint-set (union-find) structure.");
+mc("For Prim's algorithm, the greedy choice is to choose:", ["The edge of least weight not in the tree under construction","The edge of least weight that connects a tree vertex to a non-tree vertex","The edge of greatest weight whose removal does not disconnect the graph","The vertex of least degree"], "b", FIX + "The PDF said \"least weight edge not in the tree\", but that edge could join two non-tree vertices or form a cycle. It must cross from the tree to a vertex outside it.");
+mc("How many swaps does Insertion Sort make when sorting 6, 1, 3, 5, 2, 4?", ["6","7","8","9"], "c", "Swaps = inversions: (6 with 1,3,5,2,4)=5, (3,2)=1, (5,2),(5,4)=2 → 8.");
+mc("How many swaps does Insertion Sort make when sorting 5, 1, 3, 4, 2?", ["4","5","6","7"], "c", "Inversions: 5 with 1,3,4,2 = 4; (3,2); (4,2) → 6.");
+mc("A perfect binary tree has n = 2^h − 1 nodes. Summing the heights of every node yields an expression that is:", ["Θ(log n)","Θ(n)","Θ(n²)","Θ(n log n)"], "b", FIX + "The PDF marked O(log n). Half the nodes are leaves (height 0), a quarter have height 1, etc. The sum is n − h − 1 = Θ(n). This is why build-heap is linear.");
+mc("Each node of a perfect binary tree is labeled with its height (the root has height h). If the tree has n nodes, the sum of all labels equals:", ["Θ(log n)","Θ(n²)","Θ(n)","Θ(n log n)"], "c");
+mc("The following structures possess optimal substructure, except for:", ["A parenthesization of a matrix product minimizing total multiplications","A minimum-cost path between two vertices","A parenthesization of a matrix product maximizing total multiplications","A maximum-cost (longest simple) path between two vertices"], "d", "Sub-paths of a longest simple path need not be longest, because they can't reuse vertices.");
+mc("An algorithm with quadratic running time took 1 second on a problem of size 10,000. How long for size 20,000?", ["1 second","2 seconds","4 seconds","8 seconds"], "c", "(2n)² = 4n².");
+mc("A quadratic algorithm takes 1 second on input size 100,000. About how long for size 200,000?", ["1 second","4 seconds","2 seconds","None"], "b");
+mc("The running time of Strassen's algorithm is:", ["Θ(n²)","Θ(n^2.5)","Θ(n^(log 7))","Θ(n³)"], "c", "7 recursive multiplications of half-size matrices: log₂7 ≈ 2.81.");
+mc("n items are randomly inserted into a separate-chaining hash table of size n. For large n, the length of the longest chain tends toward:", ["O(1)","Θ(log n / log log n)","Θ(n)","Θ(√n)"], "b", FIX + "The PDF said O(1). The <i>average</i> chain is O(1), but the longest one (balls-into-bins) grows like log n / log log n.");
+mc("Inserting n elements into a separate-chaining hash table of size n takes expected total time:", ["O(log n)","O(n)","O(n log n)","O(n²)"], "b", "Load factor 1 → each insert is O(1) expected.");
+mc("Give the best big-O for (1000n² log n + n² log⁵⁰ n + 1000000 n^2.05)(789 log⁴ n + 45 log²(n⁸⁰) + 10 log³(n⁵⁰)).", ["O(n^2.05 log² n)","O(n^2.05 log³ n)","O(n^2.05 log⁴ n)","O(n² log⁵⁰ n)"], "c", FIX + "First factor: n^2.05 beats any n²·polylog. Second factor: log(n⁸⁰) = 80 log n, so those terms are only log² n and log³ n; 789 log⁴ n wins. The PDF's \"n^2.05 log²(n⁸⁰)\" missed this.");
+mc("When Quicksort picks its pivot as the median of the first, middle, and last elements, it is guaranteed O(n log n) on each of the following arrays except:", ["An array sorted ascending","An array sorted descending","An array in random order","It is guaranteed on all of these"], "c", "Median-of-three fixes sorted inputs, but adversarial/random orders can still produce bad pivots — no worst-case guarantee.");
+mc("Quicksort (first element as pivot) hits its worst case when the array is:", ["Sorted ascending","Sorted descending","All elements equal (with basic partition)","All of a, b and c","Randomly ordered"], "d");
+mc("In the queue-based topological sort algorithm, the first vertices added to the queue are those with:", ["Greatest in-degree","Greatest out-degree","Zero (least) in-degree","Zero out-degree"], "c", FIX + "The PDF notes said \"greatest in-degree\". Vertices with no incoming edges have no prerequisites, so they go first.");
+mc("If simple graph G has order 23, the largest size (number of edges) it can have is:", ["230","253","276","506"], "b", "n(n−1)/2 = 23·22/2 = 253.");
+mc("Best describes the relationship between f(n) = (log n)^√(log n) and g(n) = √n:", ["f(n) = ω(g(n))","f(n) = Θ(g(n))","f(n) = o(g(n))","Not comparable"], "c", FIX + "The PDF said ω. Take logs: log f = √(log n)·log log n, while log g = ½ log n. Since √(log n)·log log n = o(log n), f grows slower.");
+mc("Best describes the relationship between f(n) = n/(n+1) and g(n) = n^(1/log n):", ["f = o(g)","f = Θ(g)","f = ω(g)","Not comparable"], "b", "f → 1 and g = 2 (constant, base-2 log). Both Θ(1).");
+mc("Best describes the relationship between f(n) = (log n)^(1/n) and g(n) = n/(n+1):", ["f = o(g)","f = Θ(g)","f = ω(g)","Not comparable"], "b", "(log n)^(1/n) → 1 and n/(n+1) → 1.");
+mc("The double sum Σ(i=1..n) Σ(j=i/2..i) j grows as:", ["Θ(n²)","Θ(n³)","Θ(n⁴)","Θ(n log n)"], "b", "The inner sum is about (3/8)i², and Σ i² = Θ(n³).");
+mc("Which sorting task would NOT be appropriate for Counting Sort?", ["Sorting millions of products by their 15-digit serial numbers","Sorting millions of employees by age","Sorting the days of the year by Long Beach's high temperature (°C, rounded)","Sorting every California vehicle by year manufactured"], "a", "Counting sort needs a small key range; 10¹⁵ possible keys is far too many.");
+mc("Worst-case time to insert n elements one by one into an initially empty binary heap:", ["O(n²)","O(√n log n)","O(n)","O(n log n)"], "d");
+mc("A simple graph's vertices are all bit strings of length 5; two are adjacent iff they differ in exactly one bit. How many edges does it have?", ["32","40","80","160"], "c", "Hypercube Q₅: n·2^(n−1) = 5·16 = 80.");
+mc("In the edit-distance recurrence, for i, j > 0, d(i, j) equals:", ["min(d(i−1,j)+1, d(i,j−1)+1, d(i−1,j−1) + [uᵢ ≠ vⱼ])","max(d(i−1,j), d(i,j−1)) + 1","d(i−1,j−1) + 1","min(d(i−1,j), d(i,j−1))"], "a", "Base cases: d(0,j) = j and d(i,0) = i.");
+mc("After running Floyd-Warshall on n vertices, the optimal path from any i to j can always be reconstructed if you have access to:", ["D⁽ⁿ⁻¹⁾ only","D⁽ⁿ⁾ only","D⁽ⁿ⁾ and D⁽⁰⁾","D⁽ⁿ⁻¹⁾ and D⁽ⁿ⁾"], "c", FIX + "The PDF said D⁽ⁿ⁻¹⁾. Distances alone don't give the path; with the edge weights (D⁽⁰⁾) you can pick the next vertex k where c(i,k) + d(k,j) = d(i,j).");
+mc("1/1ᵏ + 1/2ᵏ + … + 1/nᵏ = Θ(1). What must k be?", ["k < 1","k > 1","k = 1","Not enough information"], "b", FIX + "The PDF said \"not enough information\". The p-series converges exactly when k > 1; k = 1 gives the harmonic series Θ(log n).");
+mc("Minimum edit distance between u = sample and v = dampen:", ["2","3","4","5"], "b", "s→d, delete l, insert n (or equivalent): 3.");
+mc("T(n) = 4T(n/3) + n log n solves to:", ["Θ(n log n)","Θ(n log² n)","Θ(n^(log₃4))","Θ(n²)"], "c", "log₃4 ≈ 1.26 > 1, so case 1.");
+mc("Computing Fibonacci with the matrix identity [[1,1],[1,0]]ⁿ and repeated squaring takes how many matrix multiplications?", ["O(1)","O(log n)","O(n)","O(n²)"], "b");
+mc("The Fibonacci recurrence fₙ = fₙ₋₁ + fₙ₋₂ computed by naive recursion (no memo) takes time:", ["Θ(n)","Θ(n²)","Exponential","Θ(log n)"], "c");
+
+/* ---- Practice exam (key provided) ---- */
+mc("Which expression surely supports the statement f(n) = Ω(g(n))?", ["f(n) ≤ 4g(n) for all n ≥ 1","f(n) ≥ 4g(n) for all n ≥ 136","lim f(n)/g(n) = 0","None of the above"], "b");
+mc("Let k be the degree of polynomial p(n) and l the degree of q(n). If p(n) = o(q(n)), then necessarily:", ["k = l","k < l","k > l","None of the above"], "b");
+mc("If f(n) = O(g(n)) and f(n) = Ω(g(n)), then it is always true that:", ["f(n) = o(g(n))","f(n) = Θ(g(n))","f(n) = ω(g(n))","Both a and b"], "b");
+mc("The growth of 1 + 1/2 + 1/3 + … + 1/n is best described by:", ["Θ(1/n)","Θ(1)","Θ(log n)","Θ(n log n)"], "c");
+mc("If lim (log f(n) − log g(n)) = 1 for positive f, g, then:", ["f = o(g)","f = Θ(g)","f = ω(g)","More information is needed"], "b", "f/g → 2 (a constant).");
+mc("An algorithm on an n×n Boolean matrix runs in O(n log n) with size parameter n. With m = n² as the size parameter, its running time is:", ["O(√m log m)","O(m² log m)","O(m log m)","O(m² log² m)"], "a");
+mc("Which is NOT a desirable property of a hash function h(x)?", ["Computable in O(1) time","Range stays within the hash-table size","Range includes a wide range of integers","Values h(x₁)…h(xₙ) are uniformly distributed"], "b", "Course key: b. (h maps to a wide integer range; reducing mod table size is a separate step.)");
+mc("A separate-chaining hash table has load factor α = 5. The average chain length is:", ["5","log 5","5 log 5","log log 5"], "a");
+mc("Perfect hashing:", ["May be applied to static hash tables","Means no collisions when retrieving data","Is one of the most efficient ways of retrieving data","All of the above"], "d");
+mc("Worst-case time to pop an element from a binary heap of size n:", ["O(1)","O(log n)","O(n)","O(n log n)"], "b");
+mc("Which algorithm does NOT require a heap for its efficient implementation?", ["Huffman's","Dijkstra's","Kruskal's","Prim's"], "c");
+mc("Which graph problem can NOT be solved in O(m + n) time?", ["Determining if a simple graph is connected","Determining if a simple graph is bipartite","Finding a minimum spanning tree of a weighted graph","Topologically sorting a DAG"], "c");
+mc("Directed G is weakly but not strongly connected, and P = a, b, c, d is a weak (not strong) connection from a to d. Then we surely know:", ["(a,b) or (b,c) or (c,d) is an edge","(a,b) and (b,c) and (c,d) are edges","(b,a) or (c,b) or (d,c) is an edge","(b,a) and (c,b) and (d,c) are edges"], "c", "If no edge pointed backward, P would be a strong (directed) path.");
+mc("G has edges {(a,b),(b,c),(c,d),(a,d)}. The depth-first spanning tree rooted at a has how many branches?", ["1","2","3","4"], "a", "DFS goes a→b→c→d in one chain.");
+mc("Worst-case time to insert n elements into an initially empty binary search tree:", ["O(n²)","O(√n log n)","O(n)","O(n log n)"], "a", FIX + "Sorted input makes the BST a chain. (The practice-exam key says d, which applies only to balanced trees; for a plain BST the worst case is O(n²).)");
+mc("A binary search tree T is balanced (AVL sense) when, for every node:", ["Left and right subtrees have equal height","Left and right subtrees have equal size","Left and right subtree heights differ by at most one","Left and right subtree sizes differ by at most one"], "c");
+mc("Numbers from {1,…,n} inserted in random order into an empty BST. The average height is:", ["O(n)","O(log n)","O(√n)","O(n²)"], "b");
+mc("Worst-case running time of Insertion Sort on n 32-bit unsigned integers:", ["Θ(√n)","Θ(n)","Θ(n log n)","Θ(n²)"], "d");
+mc("Quicksort is guaranteed to run in O(n log n) so long as the pivot is:", ["Randomly selected","The median of first, middle and last","The median of the array","None of the above"], "c", "The true median (found in linear time) always splits evenly.");
+mc("In Kruskal's algorithm, the greedy choice is to:", ["Remove the costliest edge if that doesn't disconnect the graph","Add the least-cost edge to the forest if it doesn't create a cycle","Add the vertex with least connection cost to the tree","Remove the vertex with greatest connection cost"], "b");
+mc("In Huffman's algorithm, the greedy choice is to:", ["Merge the two least probabilities","Merge the two greatest probabilities","Add the shortest codeword","Remove the longest codeword"], "a");
+mc("If T(n) = 2T(n/3) + √n, then:", ["Θ(√n)","Θ(n²)","Θ(n^(log₃2))","Θ(n^(log 3))"], "c", "log₃2 ≈ 0.63 > 0.5, case 1.");
+mc("In dynamic programming, \"memoization\" refers to:", ["Storing the recurrence in a static array","Storing solutions to smaller subproblems for later lookup","Remembering the current location in the recursion tree","Remembering recurrences for a comprehensive exam"], "b");
+mc("All of the following can be solved by a worst-case polynomial-time DP algorithm, except:", ["Matrix Chain Multiplication","Optimal Binary Search Tree","Edit Distance","0-1 Knapsack"], "d");
+mc("In Floyd-Warshall, d⁽ᵏ⁾ᵢⱼ represents the distance from i to j restricted to paths:", ["Traversing at most k edges","Traversing at least k edges","Whose intermediate vertices lie in {1,…,k}","Whose intermediate vertices lie in {k+1,…,n}"], "c");
+mc("Determining if a bipartite graph has a perfect matching most naturally reduces to:", ["Hamilton cycle","Vertex cover","Maximum flow in a directed network","Longest path"], "c");
+mc("Determining the maximum flow in a directed network most naturally reduces to:", ["0-1 Knapsack threshold","Longest path","Determining if there is a path between two vertices","Longest path in a DAG"], "c", "Ford-Fulkerson repeatedly finds augmenting paths.");
+mc("Professor Jones proves 0-1 Knapsack has no polynomial algorithm. Then each of these also has none, except:", ["SAT","Hamilton Cycle","Subset Sum","Longest path in a DAG"], "d", "Longest path in a DAG is solvable in linear time; the others are NP-complete.");
+mc("The Subset Sum decision problem is most closely associated with:", ["Set Partition","3SAT","Hamilton Cycle","Vertex Cover"], "a");
+
+/* ---- Quiz 4 ---- */
+mc("Minimum-Distance-Pair: the dividing line is x = 2 and the δ-strip width is 2δ with δ = 1.5. Which pair of points can NOT possibly be in P?", ["(3,6), (5,5)","(1,1), (2.15,1.05)","(3,5), (4,4)","Each pair could be in P"], "c", "(3,5) and (4,4) are on the same side and only √2 ≈ 1.41 < δ apart, contradicting δ being the minimum on that side. The cross pair in b is allowed to be closer than δ.");
+mc("A divide-and-conquer max/min algorithm on n = 2ᵏ integers (base n = 2: 1 comparison; combine: 2 comparisons). Total comparisons:", ["Σ(i=1..k) 2ⁱ","n/2 + Σ(i=1..k−1) 2ⁱ","n/2 + n/4 + … + 2 + 1","None of the above"], "b", "T(n) = 2T(n/2) + 2 gives 3n/2 − 2 = n/2 + (2ᵏ − 2).");
+mc("Find Statistic uses groups of size g (g ≥ 5, odd). Regardless of g, a good approximate lower bound on the number of integers on either side of the pivot is:", ["2n/5","3n/10","n/4","n/5"], "c", "About half the groups × about half of each group ≈ (n/2g)(g/2) = n/4. (3n/10 is the g = 5 case.)");
+mc("Multi-Find Statistic (find m statistics via median partitioning and recursion) has worst-case running time:", ["O(n)","O(n log n)","O(n log m)","O(n²)"], "c", "Each level costs O(n); the recursion stops after about log m levels since S is split each time.");
+mc("Sorted arrays a, b of odd size n with medians mₐ < m_b. Then median(a ∪ b) must equal:", ["median((a − a_left) ∪ (b − b_left))","median((a − a_right) ∪ (b − b_right))","median((a − a_right) ∪ (b − b_left))","None of the above"], "d", "The median lies in a's right half and b's left half: median((a − a_left) ∪ (b − b_right)), which isn't listed.");
+mc("A is n×n (n even) and q = A₁₂ is its upper-right quadrant. Entry (i, j) of q corresponds to which entry of A?", ["(i, j − n/2)","(i, j + n/2)","(i − n/2, j)","(i + n/2, j)"], "b");
+mc("Largest k such that multiplying 7×7 matrices with k multiplications gives time o(n^(log 7))?", ["49","235","243","None of the above"], "b", "Need log₇k < log₂7, i.e. k < 7^2.807 ≈ 235.8.");
+mc("Karatsuba-style multiply on x = 1010101 and y = 0111011 (xL = leftmost ⌈n/2⌉ bits). Each is a return value of a recursive call, except:", ["140","15","70","150"], "a", "xL=1010=10, xR=101=5, yL=0111=7, yR=011=3. P1=10·7=70, P2=5·3=15, P3=15·10=150.");
+
+/* ---- Quiz 5 ---- */
+mc("fₙ = c₁φⁿ + c₂ψⁿ where φ = (1+√5)/2, ψ = (1−√5)/2, and A(c₁,c₂)ᵀ = (f₁,f₀)ᵀ. The determinant of A is:", ["1","√5","−√5","1 + √5"], "b", "A = [[φ, ψ],[1, 1]], det = φ − ψ = √5.");
+mc("The fact most responsible for the Fibonacci sequence's exponential growth is:", ["fₙ = Ω(2ⁿ)","fₙ = Ω(nᵏ) for every k","fₙ = ω(((1−√5)/2)ⁿ)","(1+√5)/2 > 1"], "d", "fₙ ≈ φⁿ/√5 and φ ≈ 1.618 > 1. (fₙ is not Ω(2ⁿ).)");
+mc("0-1 Knapsack, items (w,p): (2,15),(4,20),(5,20),(4,15),(3,20), capacity 10. Sum of all entries of p(i,c), 0≤i≤5, 0≤c≤10:", ["1,175","1,185","1,200","1,215"], "d", "Computed by filling the table.");
+const KT = `<pre>xi,c 0 1 2 3 4 5  6  7  8
+x1   0 2 2 2 2 2  2  2  2
+x2   0 2 4 6 6 6  6  6  6
+x3   0 2 4 6 7 9 11 11 11
+x4   0 2 4 6 7 9 11 11 12
+x5   0 2 4 6 7 9 11 11 13
+x6   0 3 5 7 9 10 12 14 14</pre>`;
+mc(KT + "This table solves 0-1 Knapsack with 6 items, capacity 8. The optimal solution has total weight:", ["5","6","7","8"], "c", "x6 (w=1, p=3) plus row 5 at capacity 7 → x1,x2,x3 (weights 1,2,3). 1+6 = 7.");
+mc(KT + "From this table, the optimal solution does NOT include item:", ["1","2","3","4"], "d", "Optimal set is {x1, x2, x3, x6}.");
+mc("Edit-distance DP matrix for u = ababa, v = abbabba (0≤i≤5, 0≤j≤7). Sum of all entries:", ["119","124","128","134"], "b");
+mc("Edit-distance DP matrix for u = bcaaaca, v = cababac (0≤i,j≤7). Sum of all entries:", ["218","223","231","237"], "b");
+mc("Number of different optimal edit sequences transforming u = bcabcabc to v = abcaacac:", ["1","2","3","4"], "a", "Distance 3, and only one path through the DP table achieves it.");
+mc("Number of different optimal edit sequences transforming u = SIAM to v = LIMA:", ["1","2","3","4"], "c", "Distance 3, with 3 optimal paths through the table.");
+
+/* ---- Quiz 6 ---- */
+mc("A BST holds keys 1–5, where key i has weight 10i. The optimal weighted access cost (root at depth 1) is:", ["270","300","340","None of the above"], "b");
+mc("A BST holds keys 1–5, key i weight 10i. In the optimal tree, the root key is:", ["2","3","4","5"], "c");
+mc("A BST holds keys 1–63. In the DP for wac(i,j), entry wac(25,32) is used exactly how many times to compute other entries?", ["8","25","31","55"], "d", "As a right subtree for wac(i,32), i = 1..24 (24 times); as a left subtree for wac(25,j), j = 33..63 (31 times). 24 + 31 = 55.");
+mc("Matrices A1: 6×3, A2: 3×2, A3: 2×5, A4: 5×4. Sum of all mc(i,j), 1≤i≤j≤4:", ["390","402","412","420"], "a");
+mc("If d(u,v) is the distance from u to v in a DAG, it is always true that:", ["d(u,v)=∞ if u has in-degree 0","d(u,v)=∞ if v has out-degree 0","There is w ≠ u,v with d(u,v) = d(u,w) + d(w,v)","None of the above is always true"], "d");
+mc("Longest increasing subsequence of 22, 18, 31, 20, 14, 38, 20, 41 modeled as a longest path in a DAG. The out-degrees sum to:", ["8","17","20","34"], "b", "Count pairs i < j with a[j] > a[i]: 17.");
+mc("A DP fills an n×n matrix, and entry aᵢⱼ is used to compute |i − j| other entries. Total steps:", ["O(n)","O(n²)","O(n³)","None of the above"], "c", "Σ|i − j| over all i, j is Θ(n³).");
+mc("Two assembly lines with n stations each (switching costs given). Number of DP subproblems:", ["O(n)","O(n²)","O(n³)","None of the above"], "a", "2n subproblems: best time to finish station j on line i.");
+mc("TSP DP with mc(i, A), A a subset of cities. Number of subproblems:", ["O(n)","O(n²)","O(n³)","None of the above"], "d", "n·2ⁿ⁻¹ — exponential.");
+
+/* ---- Quiz 7 ---- */
+mc("Floyd-Warshall gives d³ = <pre>0 2 1 4 4\n1 0 4 3 5\n5 1 0 2 2\n7 1 8 0 2\n1 3 4 4 0</pre>d³ differs from d⁴ in exactly how many places?", ["1","2","3","None of the above"], "d", "Using vertex 4 as an intermediate improves no entry, so they differ in 0 places. (Matrix recovered from the PDF's garbled text; re-check against your original copy.)");
+mc("G is a weighted, connected undirected graph on n vertices. Running Floyd-Warshall, the least number of entries with d⁰ᵢⱼ = dⁿᵢⱼ is:", ["½·C(n,2)","2n","3n","None of the above"], "b", "n diagonal zeros, plus each vertex's cheapest incident edge is already a shortest path; those edges cover ≥ n/2 pairs, i.e. ≥ n symmetric entries.");
+mc("When computing d⁵ in Floyd-Warshall, row 5 of d⁴ equals row 5 of d⁵ because:", ["Vertex 5 can't be an intermediate vertex when traveling from vertex 5","Vertex 5 can't be an intermediate vertex when traveling to vertex 5","Both a and b","Neither"], "a", "Row 5 is paths starting at 5; d⁵₅ⱼ = min(d⁴₅ⱼ, d⁴₅₅ + d⁴₅ⱼ) = d⁴₅ⱼ.");
+mc("All-pairs distances via matrix multiplication, D¹ = <pre>0 2 5 1\n1 0 2 6\n2 4 0 2\n1 3 9 0</pre>D¹ differs from D² in exactly how many places?", ["1","2","3","None of the above"], "c", "Computed with min-plus multiplication. (Matrix recovered from garbled PDF text.)");
+mc("In the matrix-multiplication (min-plus) approach to all-pairs distances, multiplication of D¹, D², … satisfies all properties except:", ["Commutativity","Associativity","Distributivity","All are satisfied"], "a");
+mc("The Turing-reducibility relation ≤_T always satisfies each property except:", ["Reflexivity","Symmetry","Transitivity","All are satisfied"], "b");
+mc("L1 ≤_T L2 via an O(n² log n) algorithm and L2 ≤_T L3 via an O(n³) algorithm. Then L1 ≤_T L3 in time:", ["O(n⁵ log⁴ n)","O(n⁶ log³ n)","O(n⁷ log⁴ n)","O(n⁸ log⁴ n)"], "b", "The first reduction can produce an instance of size O(n² log n); cubing it gives n⁶ log³ n.");
+
+/* ---- Quiz 8 ---- */
+mc("Given 2SAT instance C (R_x = reachability set of x in G_C), which implies a unique satisfying assignment?", ["For every variable x, exactly one of R_x or R_¬x is consistent","G_C has no inconsistent cycles","Some R_x has α_Rx satisfying every clause","None of the above"], "a", "Each variable's value is then forced.");
+mc("Given 2SAT instance C, which is equivalent to C being unsatisfiable?", ["G_C has a simple path of length 2n − 1","No variable x has both R_x and R_¬x consistent","Some variable x has both R_x and R_¬x inconsistent","None of the above"], "c", "That means x ⇒ ¬x and ¬x ⇒ x, a contradiction.");
+mc("Augmenting path P in the residual network traverses (u,v) and (v,w), both backward relative to G. With bottleneck c_min, the net change in flow entering v is:", ["0","c_min","−c_min","Not enough information"], "c", "(v,w) backward means G has edge (w,v); its flow drops by c_min, so flow into v drops by c_min. (Flow out of v drops equally, so v still conserves.)");
+mc("Augmenting path P traverses (u,v) backward and (v,w) forward relative to G. The net change in flow entering v is:", ["0","c_min","−c_min","Not enough information"], "a", "Both changes affect v's outgoing edges (v,u)↓ and (v,w)↑; incoming flow is unchanged.");
+mc("Flow-conserving subgraph H has total in/out flow 76. Vertex v ∈ H is removed. v's edges: (u1,v) in, u1∉H, 6; (u2,v) in, u2∈H, 9; (u3,v) in, u3∉H, 4; (v,u4) out, u4∈H, 8; (v,u5) out, u5∉H, 4; (v,u6) out, u6∈H, 7. New total in/out flow of H:", ["57","66","85","None of the above"], "d", "Inflow: 76 − 6 − 4 (lost edges from outside) + 8 + 7 (v now outside, sending to u4, u6) = 81. Outflow check: 76 − 4 + 9 = 81.");
+mc("A consequence of \"no positive flow can have only the source failing to conserve flow\" is:", ["Every network has a flow-conserving subgraph","There must be a path from s to t along edges with positive flow","For every positive flow f there is a larger flow g","All of the above"], "b");
+mc("Bipartite G = (V1, V2, E) with |E| = m and matching M. The flow network F_{G,M} has how many edges oriented right to left?", ["|M|","m − |M|","3|M|","m − 3|M|"], "a", "Matched edges are reversed.");
+mc("Bipartite G with |V1| = |V2| = n and matching M. F_{G,M} admits an alternating s-to-t path of length at most:", ["n + 3","|M| + 2","2n + 2","2|M| + 3"], "d", "The path can use each of the |M| matched edges once, plus unmatched edges between them and the two edges at s and t.");
+mc("Worst-case running time of the maximum-matching (augmenting path) algorithm (m edges, n vertices):", ["O(m + n)","O(m²n)","O(mn²)","None of the above"], "d", "At most n augmentations, each O(m + n): O(mn).");
+
+/* ---- Quiz 9 ---- */
+mc("Which decision problem has a corresponding optimization problem?", ["Independent Set","Subset Sum","Prime","Graph Isomorphism"], "a", "Maximum independent set.");
+mc("An oracle answers Hamilton Cycle queries and says \"yes\" for G = (V,E). Finding the cycle solely by queries needs at most how many queries?", ["|V|","|E|","|V|²","|E|²"], "b", "Try deleting each edge; keep it deleted if the answer is still yes.");
+mc("Reduction from 3SAT to Clique: C has 10 variables and 80 clauses, and each of the 20 literals appears in exactly 12 clauses. f(C) has exactly how many edges?", ["27,120","27,780","28,440","None of the above"], "d", "240 vertices; pairs in different clauses: C(240,2) − 80·3 = 28,440. Minus complementary pairs: 10 × 12 × 12 = 1,440 → 27,000 (assuming x and ¬x never share a clause).");
+mc("All of these decision problems are provably in P, except:", ["Prime","2SAT","0-1 Knapsack","Optimal Binary Search Tree"], "c");
+mc("Instance (G,k): each vertex is labeled with a 3SAT instance. Positive iff every k-clique has at least one vertex labeled with a satisfiable instance. L is provably in:", ["P","NP","co-NP","None of the above"], "d", "\"For every clique, there exists a satisfying assignment\" is ∀∃ — neither a short yes-certificate nor a short no-certificate is available.");
+mc("Instance: a set S of integers. Positive iff no subset A has Σ A = Σ (S − A). L is provably in:", ["P","NP","co-NP","None of the above"], "c", "It is the complement of Set Partition.");
+mc("Instance: a simple graph G. Positive iff G has a vertex cover of size 62. L is provably in:", ["P","NP","co-NP","None of the above"], "a", "62 is a constant: try all C(n,62) = O(n⁶²) subsets.");
+mc("If p is the permutation (4 3 6 5 2 1) in one-line notation, p⁵ equals:", ["(1 4 3 6 5 2)","(6 5 2 1 4 3)","(5 6 1 2 3 4)","None of the above"], "b", "p is a single 6-cycle, so p⁵ = p⁻¹ = (6 5 2 1 4 3).");
+mc("S sums to 58 and has a subset summing to 22 iff S ∪ {J} can be partitioned into two equal-sum sets. J must equal:", ["7","18","21","None of the above"], "d", "J = |58 − 2·22| = 14: total 72, halves 36 = 22 + 14.");
+mc("String Partition: n binary strings of length m; positive iff they can be split into A and B with equal total zeros. String Partition is provably in:", ["P","NP","co-NP","All of the above"], "d", "Zero-counts are at most m, so subset-sum DP runs in O(n²m): it's in P, and P ⊆ NP ∩ co-NP.");
+
+/* ---- Extra algorithms set ---- */
+mc("Intervals [5,8], [19,22], [3,15], [20,26], [27,31], [4,30], [10,18], [21,31], [21,29], [16,21]. Maximum number of pairwise non-overlapping intervals:", ["5","6","3","4"], "d", "Greedy by earliest finish: [5,8], [10,18], [19,22], [27,31].");
+mc("Which can NOT be solved using the (basic) Master Theorem?", ["T(n) = 18T(n/4) + √n","T(n) = 5T(n/5) + n log³ n","T(n) = 10T(n/15) + n log² n","T(n) = 3T(n/3) + 20n"], "b", "n^(log₅5) = n and f = n log³ n is bigger but not polynomially bigger.");
+mc("Using a disjoint-set (M-tree) structure for log-linear unit task scheduling, the algorithm begins with a number of trees equal to:", ["The maximum deadline of the input tasks","The number of different deadlines","The number of input tasks","The number of tasks that will be scheduled"], "a", "One tree per time slot.");
+tf("Dijkstra's algorithm with positive weights: if u is added to the tree before v, then d(s,u) < d(s,v).", false, "Ties are possible, so only d(s,u) ≤ d(s,v) is guaranteed.");
+mc("T(n) = 2T(⌊√n⌋) + 1 solves to:", ["Θ(log² n)","Θ(log log n)","Θ(log n)","Θ(√n)"], "c", "Let m = log n: S(m) = 2S(m/2) + 1 = Θ(m).");
+tf("The OSI layer model is rarely used directly in the Internet (TCP/IP is used instead).", true);
+tf("Fiber-optic cable performance is not affected by electromagnetic noise.", true);
+
+/* ===================== QUIZ ENGINE ===================== */
+const NUM_ORDERS = 6;
+function rng(seed){ return function(){ seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function orderFor(n){ const idx = Q.map((_, i) => i); const r = rng(n * 9973 + 17); for (let i = idx.length - 1; i > 0; i--){ const j = Math.floor(r() * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]]; } return idx; }
+
+let state = null;
+const $ = id => document.getElementById(id);
+const key = n => "cecs528_order_" + n;
+function save(){ localStorage.setItem(key(state.n), JSON.stringify({pos: state.pos, score: state.score, missed: state.missed})); }
+
+function showMenu(){
+  $("quiz").classList.add("hidden"); $("results").classList.add("hidden"); $("menu").classList.remove("hidden");
+  const box = $("orders"); box.innerHTML = "";
+  for (let n = 1; n <= NUM_ORDERS; n++){
+    const s = JSON.parse(localStorage.getItem(key(n)) || "null");
+    const b = document.createElement("button"); b.className = "order-btn";
+    const status = s && s.pos > 0 ? (s.pos >= Q.length ? "Completed – " + s.score + "/" + Q.length : "Resume at Q" + (s.pos + 1)) : "Not started";
+    b.innerHTML = "<b>Order " + n + "</b><small>" + status + "</small>";
+    b.onclick = () => start(n);
+    box.appendChild(b);
+  }
+}
+
+function start(n){
+  const s = JSON.parse(localStorage.getItem(key(n)) || "null");
+  state = {n, order: orderFor(n), pos: 0, score: 0, missed: []};
+  if (s && s.pos < Q.length){ Object.assign(state, s); }
+  $("menu").classList.add("hidden"); $("results").classList.add("hidden"); $("quiz").classList.remove("hidden");
+  render();
+}
+
+function restart(){ localStorage.removeItem(key(state.n)); start(state.n); }
+
+function render(){
+  if (state.pos >= Q.length) return finish();
+  const q = Q[state.order[state.pos]];
+  $("progress").textContent = "Order " + state.n + " · Question " + (state.pos + 1) + " / " + Q.length;
+  $("score").textContent = "Score: " + state.score;
+  $("barfill").style.width = (state.pos / Q.length * 100) + "%";
+  $("qtext").innerHTML = q.q;
+  $("fb").className = "fb"; $("fb").innerHTML = "";
+  $("nextBtn").classList.add("hidden");
+  const box = $("opts"); box.innerHTML = "";
+  q.o.forEach((text, i) => {
+    const b = document.createElement("button"); b.className = "opt";
+    const l = document.createElement("span"); l.className = "l"; l.textContent = L[i] + ".";
+    b.appendChild(l); b.appendChild(document.createTextNode(" " + text));
+    b.onclick = () => answer(i);
+    box.appendChild(b);
+  });
+  window.scrollTo({top: 0, behavior: "smooth"});
+}
+
+function answer(i){
+  const q = Q[state.order[state.pos]];
+  const btns = [...$("opts").children];
+  btns.forEach(b => b.disabled = true);
+  const fb = $("fb");
+  if (i === q.a){
+    btns[i].classList.add("correct");
+    state.score++;
+    fb.className = "fb good"; fb.innerHTML = "✅ Correct!" + (q.e ? " <span style='color:var(--muted)'>" + q.e + "</span>" : "");
+    state.pos++; save();
+    setTimeout(render, q.e ? 1400 : 700);
+  } else {
+    btns[i].classList.add("wrong"); btns[q.a].classList.add("correct");
+    fb.className = "fb bad";
+    fb.innerHTML = "❌ Not quite. Correct answer: <b>" + L[q.a] + ". " + escapeHTML(q.o[q.a]) + "</b>" + (q.e ? "<br><span style='color:var(--muted)'>" + q.e + "</span>" : "");
+    state.missed.push(state.order[state.pos]);
+    state.pos++; save();
+    $("nextBtn").classList.remove("hidden");
+  }
+}
+
+function next(){ render(); }
+function escapeHTML(s){ return s.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+
+function finish(){
+  $("quiz").classList.add("hidden"); $("results").classList.remove("hidden");
+  const pct = Math.round(state.score / Q.length * 100);
+  $("final").textContent = "Order " + state.n + ": you scored " + state.score + " / " + Q.length + " (" + pct + "%).";
+  const m = $("missed");
+  m.innerHTML = state.missed.length ? "<h3>Questions you missed</h3>" : "<p>Perfect run! 🎉</p>";
+  state.missed.forEach(qi => {
+    const q = Q[qi]; const d = document.createElement("div");
+    d.innerHTML = q.q + "<br><b style='color:var(--good)'>Answer: " + L[q.a] + ". " + escapeHTML(q.o[q.a]) + "</b>";
+    m.appendChild(d);
+  });
+}
+
+$("subtitle").textContent = Q.length + " questions · 6 random orders · progress is saved in your browser";
+document.addEventListener("keydown", e => {
+  if ($("quiz").classList.contains("hidden")) return;
+  if (e.key === "Enter" && !$("nextBtn").classList.contains("hidden")) return next();
+  const i = L.indexOf(e.key.toLowerCase());
+  const btns = [...$("opts").children];
+  if (i >= 0 && i < btns.length && !btns[i].disabled) answer(i);
+});
+showMenu();
+</script>
+</body>
+</html>
